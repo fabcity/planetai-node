@@ -321,13 +321,16 @@ HOURLY_INSERT = ("INSERT INTO readings_1h_done (bucket, sensor_id, metric, mean,
                  "GROUP BY 1, 2, 3")
 
 
+_HOURLY = threading.Lock()   # one rebuild at a time: two full ones at once insert the same hours
+
+
 def refresh_hourly() -> None:
     """The last 26 hours every hour, which catches a late push or a radio that caught up; the whole table on the first
     run after a start and on the first run of each local day, which catches a backfill or a deletion. One transaction,
     so a reader sees the old hours until the new ones are in. A full rebuild took 0.6 s on a copy of node #1."""
     today = _local_now().date().isoformat()
     full = state.get("hourly_full_on") != today
-    with db() as con, con.transaction(), con.cursor() as cur:
+    with _HOURLY, db() as con, con.transaction(), con.cursor() as cur:
         since = "-infinity" if full else (datetime.now(timezone.utc) - timedelta(hours=26)).isoformat()
         cur.execute(HOURLY_DELETE, {"since": since})
         cur.execute(HOURLY_INSERT, {"since": since})
@@ -872,7 +875,99 @@ def load_channel_roles() -> int:
 
 
 
+# Schema 0.69 (init.sql `data_cuts`). The figures below are measured from the middle of the node's res-8 cell. Their
+# rows written before this release are removed once, in one transaction with the mark, by the first poll of this code,
+# before any adapter writes, because update.sh applies the schema while the code before it is still running. Only the
+# substation and plant rows with a decimal go. A second run finds the mark and does nothing. The packs rewrite their
+# sensors' rows at the next poll; the older distance keys and the distance in the two sea names go now, so nothing
+# waits for one. A lab loses its fetch stamp too, which makes the make pack read the directory again at its next poll.
+CUT_METRICS = ("nearest_school_m", "nearest_health_m", "nearest_market_m", "nearest_worship_m",
+               "fires_nearest_km", "fires_nearest_bearing", "fires_upwind_km", "fires_upwind_bearing",
+               "fires_local_24h", "fires_region_24h", "fires_local_upwind", "fires_region_upwind",
+               "frp_local_mw", "frp_region_mw", "river_m")
+CUT_WHOLE = ("substation_km", "large_plant_km")
+_IN_CUT, _IN_WHOLE = (", ".join(f"'{m}'" for m in ms) for ms in (CUT_METRICS, CUT_WHOLE))   # constants, never input
+CUT_MARK = "INSERT INTO data_cuts (name) VALUES ('cell-middle') ON CONFLICT DO NOTHING RETURNING name"
+CUT_ROWS = (
+    f"DELETE FROM readings WHERE metric IN ({_IN_CUT}) OR (metric IN ({_IN_WHOLE}) AND value <> round(value))",
+    f"DELETE FROM readings_1h_done WHERE metric IN ({_IN_CUT}) OR (metric IN ({_IN_WHOLE}) "
+    "AND (mean <> round(mean) OR min <> round(min) OR max <> round(max)))")
+CUT_SENSORS = (
+    "UPDATE sensors SET meta = meta - 'km' WHERE kind = 'sensor' AND NOT local AND meta ? 'km'",    # a station pack's km
+    "UPDATE sensors SET meta = meta - 'km_from_node' WHERE sensor_id = 'forecast-bmkg' AND meta ? 'km_from_node'",
+    "UPDATE sensors SET meta = meta - 'distance_km' WHERE sensor_id IN ('forecast-marine', 'marine-point') AND meta ? 'distance_km'",
+    "UPDATE sensors SET meta = meta - 'distance_km' - 'fetched' WHERE kind = 'facility' AND source = 'fablabs-io'",
+    "UPDATE sensors SET meta = meta - 'sentence' - 'largest' WHERE sensor_id = 'hydro-point'",
+    "UPDATE sensors SET name = 'Open-Meteo Marine forecast, nearest sea cell' WHERE sensor_id = 'forecast-marine'",
+    "UPDATE sensors SET name = regexp_replace(name, '^Sea, [0-9]+ km off ', 'Sea, nearest cell ') WHERE sensor_id = 'marine-point'")
+
+
+# DuckDB has no to_regclass; information_schema answers on both.
+CUT_TABLE = ("SELECT count(*) AS n FROM information_schema.tables "
+             "WHERE table_schema = current_schema() AND table_name = 'data_cuts'")
+
+
+def _first(cur):
+    """The first value of the first row, or None: a dict row (the node's) or a tuple (DuckDB's)."""
+    rows = cur.fetchall()
+    if not rows:
+        return None
+    return next(iter(rows[0].values())) if isinstance(rows[0], dict) else rows[0][0]
+
+
+def cut_at(cur):
+    """When the cut ran, or None: none recorded yet, or a database with no data_cuts table."""
+    cur.execute(CUT_TABLE)
+    if not _first(cur):
+        return None
+    cur.execute("SELECT cut_at FROM data_cuts WHERE name = 'cell-middle'")
+    return _first(cur)
+
+
+def _after_cut(ts, cut) -> bool:
+    """True when a row stamped ts (a datetime or its ISO string) was written after the cut. With no cut, never."""
+    return cut is not None and (datetime.fromisoformat(ts) if isinstance(ts, str) else ts) >= cut
+
+
+def cut_once(cur) -> bool | None:
+    """The cut, if this node has not had it: True when it ran, None on a database with no data_cuts table, where it
+    does nothing. The mark and the removal share the caller's transaction."""
+    cur.execute(CUT_TABLE)
+    if not _first(cur):
+        return None
+    cur.execute(CUT_MARK)
+    if not cur.fetchall():
+        return False
+    for sql in CUT_ROWS + CUT_SENSORS:
+        cur.execute(sql)
+    return True
+
+
+def _cut() -> None:
+    """cut_once on the first poll of a process; a failure is said once and asked again at the next poll."""
+    if state.get("cut"):
+        return
+    try:
+        with db() as con, con.transaction(), con.cursor() as cur:
+            ran = cut_once(cur)
+        state["cut"] = True
+    except Exception as e:  # noqa: BLE001; polling goes on; the cut is asked again next time
+        if not state.get("cut_said"):
+            log.warning("the one-time cut did not run (%s: %s); asked again at the next poll", type(e).__name__, e)
+            state["cut_said"] = True
+        return
+    if ran is None:
+        log.warning("the one-time cut did not run: this database has no data_cuts table (planetai update applies it)")
+    elif ran:
+        log.info("the one-time cut removed the past rows of %d figures", len(CUT_METRICS) + len(CUT_WHOLE))
+        try:
+            refresh_hourly()      # now, so no hourly mean read from the removed rows a moment before stays
+        except Exception as e:  # noqa: BLE001; the hourly loop rebuilds within the hour
+            log.warning("the hourly means were not rebuilt after the cut (%s: %s)", type(e).__name__, e)
+
+
 def poll_sources() -> None:
+    _cut()
     poll_once(hc)
 
 
@@ -1305,12 +1400,8 @@ def _coarse(lat, lon):
     """A point snapped to the centre of its resolution-8 cell, three decimals; two decimals without h3."""
     if lat is None or lon is None:
         return lat, lon
-    try:
-        import h3  # noqa: PLC0415
-        clat, clon = h3.cell_to_latlng(h3.latlng_to_cell(float(lat), float(lon), 8))
-        return round(clat, 3), round(clon, 3)
-    except Exception:  # noqa: BLE001
-        return round(float(lat), 2), round(float(lon), 2)
+    clat, clon = ground.middle(float(lat), float(lon))   # its own two decimals without h3
+    return round(clat, 3), round(clon, 3)
 
 
 def _public_rows(rows: list[dict]) -> list[dict]:
@@ -1318,7 +1409,7 @@ def _public_rows(rows: list[dict]) -> list[dict]:
     within a radius, never within a separation of it (packs/bali-air-dispatch), and the make pack its labs within
     MAKE_RADIUS_KM. Against the public lists those come from, the edge of either cut traces a circle through the house.
     So only what every point of the house's cell would have kept is shown, each judged from the cell's centre with the
-    limits widened by how far the house can be from it, and a lab's `distance_km` is from the centre too. Rows with
+    limits widened by how far the house can be from it, and a lab's `distance_km` is whole km from the centre too. Rows with
     `local` set (the house's own) pass untouched: the caller places them. Copies; `rows` is not changed."""
     lat, lon = float(os.getenv("NODE_LAT", 0) or 0), float(os.getenv("NODE_LON", 0) or 0)
     if not (lat or lon):
@@ -1338,7 +1429,7 @@ def _public_rows(rows: list[dict]) -> list[dict]:
         if r.get("kind") == "facility":
             if d > labs_m:
                 continue
-            r = {**r, "meta": {**(r.get("meta") or {}), "distance_km": round(d / 1000, 1)}}
+            r = {**r, "meta": {**(r.get("meta") or {}), "distance_km": round(d / 1000)}}   # whole km, as packs/make stores it
         elif r.get("source") in gone or (r.get("source") in srcs
                                          and not circ + sep_m + wall.ROUNDED_M < d <= far_km * 1000 - circ):
             continue
@@ -1378,6 +1469,12 @@ _META_PUBLIC_FACILITY = _META_PUBLIC + (
     "distance_km", "url", "registry_slug", "snapshot", "fetched")
 
 
+def _meta_public(r: dict) -> dict | None:
+    """A row's `meta` as an untrusted reader sees it: _META_PUBLIC, or _META_PUBLIC_FACILITY for a facility."""
+    allow = _META_PUBLIC_FACILITY if r.get("kind") == "facility" else _META_PUBLIC
+    return {k: v for k, v in (r.get("meta") or {}).items() if k in allow} or None
+
+
 @app.get("/sensors")
 def sensors_(request: Request):
     """Every sensor this node reads, its position, and where its numbers come from.
@@ -1413,8 +1510,7 @@ def sensors_(request: Request):
         else:
             for k in ("lat", "lon"):
                 r[k] = round(r[k], 3) if r[k] is not None else None
-        allow = _META_PUBLIC_FACILITY if r.get("kind") == "facility" else _META_PUBLIC
-        r["meta"] = {k: v for k, v in (r["meta"] or {}).items() if k in allow} or None
+        r["meta"] = _meta_public(r)
     return _child_alias(rows)
 
 
@@ -1566,10 +1662,15 @@ def trust():
 @app.get("/observations")
 def observations(request: Request, authorization: str = Header("")):
     """Latest value per slow-moving source: city statistics, model point samples, survey results. A survey's
-    `private` counts (the things a home keeps) answer the admin token only, and never an agent."""
+    `private` counts (the things a home keeps) answer the admin token only, and never an agent. A reader without a
+    token gets each row's `meta` cut as /sensors cuts it."""
     rows = q("SELECT * FROM observations" + ("" if _shows_private(request, authorization) else " WHERE " + packs.public_sql("observations"))
              + " ORDER BY scale, sensor_id, metric")
-    return rows if getattr(request.state, "share_trusted", False) else _child_alias(rows)   # a child is a home nearby to a stranger
+    if getattr(request.state, "share_trusted", False):
+        return rows
+    for r in rows:
+        r["meta"] = _meta_public(r)
+    return _child_alias(rows)   # a child is a home nearby to a stranger
 
 
 @app.get("/alerts")
@@ -1838,6 +1939,10 @@ def _export_namer(child_ids):
     return name
 
 
+EXPORT_ALERTS_SQL = """SELECT a.text, a.ts, a.rule_id, a.level, a.sensor_id
+                       FROM alerts a WHERE a.ts >= %s::date AND a.ts < %s::date + 1 ORDER BY a.ts"""
+
+
 @app.get("/export")
 def export(day: str = Query(..., pattern=r"^\d{4}-\d{2}-\d{2}$")):
     """One day of this node as open data: hourly means per sensor and metric, the Index cells, the alerts, rho.
@@ -1860,12 +1965,12 @@ def export(day: str = Query(..., pattern=r"^\d{4}-\d{2}-\d{2}$")):
     rows = [{"t": r["bucket"], "sensor": name(r), "local": r["local"], "indoor": r["indoor"], "kind": r["kind"],
              "metric": r["metric"], "mean": r["mean"], "min": r["min"], "max": r["max"], "n": r["n"]}   # q() renders timestamps as ISO strings
             for r in hourly]
-    alerts_ = q("SELECT ts, rule_id, level, text, sensor_id FROM alerts WHERE ts >= %s::date AND ts < %s::date + 1 ORDER BY ts", day, day)
+    alerts_ = q(EXPORT_ALERTS_SQL, day, day)
     if not placewords.is_house():
         indoor = _indoor_ids()
         alerts_ = [a for a in alerts_ if a.get("sensor_id") not in indoor]
     with db() as con, con.cursor() as cur:
-        cells_ = index.cells(cur); rho_ = index.rho(cur)
+        cells_ = index.cells(cur); rho_ = index.rho(cur); cut = cut_at(cur)
     _pos = _published_position()
     return {"schema": EXPORT_V0,
             "node": NODE, "city": os.getenv("NODE_CITY", ""), "scale": os.getenv("NODE_SCALE", "community"),
@@ -1873,7 +1978,9 @@ def export(day: str = Query(..., pattern=r"^\d{4}-\d{2}-\d{2}$")):
             "lat": _pos["lat"], "lon": _pos["lon"],
             "day": day, "generated": datetime.now(timezone.utc).isoformat(), "version": os.getenv("NODE_VERSION", ""),
             "licence": "CC BY 4.0", "hourly": rows,
-            "alerts": [{"t": a["ts"], "rule": a["rule_id"], "level": a["level"], "text": _unlabelled(a["text"].split("\n")[0])} for a in alerts_],
+            # only an alert raised after the cut (0.69) carries its text
+            "alerts": [{"t": a["ts"], "rule": a["rule_id"], "level": a["level"],
+                        "text": _unlabelled(a["text"].split("\n")[0]) if _after_cut(a["ts"], cut) else None} for a in alerts_],
             "cells": cells_, "rho": rho_, "offers": _offers()}
 
 
@@ -1908,11 +2015,16 @@ def report_latest(request: Request):
     # exact implicitness this release is about. Every key is present and null when there is no report,
     # and `note` is added rather than substituted.
     r = rows[0] if rows else {}
+    hide = _stranger_on_community(request)
+    if rows and not hide and not getattr(request.state, "share_trusted", False):
+        # the text of a report written before the cut (0.69) stays with the household
+        with db() as con, con.cursor() as cur:
+            hide = not _after_cut(r["ts"], cut_at(cur))
     out = {"schema": REPORT_V0,
            "id": r.get("id"), "ts": r.get("ts"), "due_local": r.get("due_local"),
            "window_hours": r.get("window_hours"), "depth": r.get("depth"), "rung": r.get("rung"),
            # a community node's report is the keeper's, not public; the weekly report is
-           "text": None if _stranger_on_community(request) else r.get("text"), "sent": r.get("sent"), "held_quiet": r.get("held_quiet"),
+           "text": None if hide else r.get("text"), "sent": r.get("sent"), "held_quiet": r.get("held_quiet"),
            "fallback_reason": r.get("fallback_reason"),
            # in the literal, None when there is a report: a key added by subscript is a key of the
            # document that does not appear in it, which tools/check_wire.py refuses for the same

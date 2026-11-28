@@ -7,7 +7,8 @@ which gives it back at the end of the block.
 Every connection carries the session settings the SQL relies on: `timezone` from NODE_TZ, because rules and cells
 find local midnight and local hours with `current_setting('TimeZone')` and Postgres defaults to UTC, which put day
 boundaries and "evening" eight hours out in Bali; and the node's coordinates as `planetai.lat` / `planetai.lon`, so
-rules can rank references by distance. Nothing may change a connection's session for good: the rules' `SET LOCAL
+rules can rank references by distance, with the middle of its res-8 cell as `planetai.clat` / `planetai.clon`, which
+a distance a rule says out loud is measured from. Nothing may change a connection's session for good: the rules' `SET LOCAL
 ROLE` ends with its transaction (index.run_ro), and a pack script that needs its own settings opens its own
 connection.
 
@@ -23,6 +24,8 @@ import psycopg
 from psycopg.rows import dict_row
 from psycopg_pool import ConnectionPool
 
+import ground
+
 DB = os.environ["DATABASE_URL"]
 NODE_TZ = os.getenv("NODE_TZ", "").strip() or "UTC"
 
@@ -32,8 +35,10 @@ _lock = threading.Lock()
 
 def _kwargs() -> dict:
     lat, lon = os.getenv("NODE_LAT", "0") or "0", os.getenv("NODE_LON", "0") or "0"
+    clat, clon = ground.middle(float(lat), float(lon))   # the middle of the node's res-8 cell, what a stored km is from
     return {"row_factory": dict_row, "autocommit": True,
-            "options": f"-c timezone={NODE_TZ} -c planetai.lat={lat} -c planetai.lon={lon}"}
+            "options": f"-c timezone={NODE_TZ} -c planetai.lat={lat} -c planetai.lon={lon}"
+                       f" -c planetai.clat={clat} -c planetai.clon={clon}"}
 
 
 def _open() -> ConnectionPool:

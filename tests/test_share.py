@@ -279,12 +279,12 @@ for _r in lan.get("/sensors").json():
     if _r["kind"] in ("model", "map") and _r["lat"] is not None:
         assert (_r["lat"], _r["lon"]) in (main._coarse(*_NODE), main._coarse(*_OLD), main._coarse(*_GRID)), _r
 assert local.get("/sensors").json()[0]["lat"] == _NODE[0], "this machine still reads the row as it is kept"
-_h3 = sys.modules.get("h3")                            # without h3 the fallback is two decimals, as /health's is
-sys.modules["h3"] = None
+_h3, main.ground.h3 = main.ground.h3, None            # without h3 the fallback is two decimals, as /health's is
+main.ground.centre.cache_clear()
 try:
     assert main._coarse(*_NODE) == (round(_NODE[0], 2), round(_NODE[1], 2)), "without h3 a row falls back to two decimals, coarser than the cell"
 finally:
-    sys.modules.pop("h3") if _h3 is None else sys.modules.__setitem__("h3", _h3)
+    main.ground.h3 = _h3
 main.q = _keep
 # Tomas, 15 Oct 2026: a screen without a key never reads what the house calls its rooms or its sensors.
 main._HOUSE.update(at=time.time() + 1e9, map=[("Kitchen, upstairs", "Sensor 1")])   # the database is stubbed out
@@ -354,7 +354,7 @@ for k in ("distance_km", "capabilities", "url", "snapshot", "city", "registry_sl
     assert k in f0["meta"], f"open: a facility cannot say its own {k}, so the page cannot draw it"
 import h3  # noqa: E402
 _c = main.ground.centre(-8.6478291, 115.1385412)
-assert f0["meta"]["distance_km"] == round(h3.great_circle_distance(_c[:2], (-8.793, 115.15), unit="km"), 1) != 3.3, \
+assert f0["meta"]["distance_km"] == round(h3.great_circle_distance(_c[:2], (-8.793, 115.15), unit="km")) != 3.3, \
     "the distance is the one figure the ask needs, and a stranger's is from the cell's centre, not the house (R25)"
 assert local.get("/sensors").json()[0]["meta"]["distance_km"] == 3.3, "this machine keeps the pack's own distance"
 assert "host" not in f0["meta"], \
@@ -448,6 +448,113 @@ for p in (A, B):
     _fc["write_wind_field"](None, *p)
 assert _got[0] == _got[1] == tuple(_cc), "the wind grid on /ground/wind is centred on the house, to 5 dp"
 print("open: /ground's tile sets and wind grid are cut round the cell's centre")
+
+# /nearby, /observations and /alerts. A reader without a token gets the same answer for two points in one cell, holding
+# neither point and no km with a decimal; the household's token and this machine read the stored rows.
+import importlib.util as _ilu  # noqa: E402
+import types as _types  # noqa: E402
+_spec = _ilu.spec_from_file_location("t_nearby_routes", "packs/nearby/routes.py")
+NB = _ilu.module_from_spec(_spec); _spec.loader.exec_module(NB)
+
+
+def nearby_rows(house):
+    """The ring as the database holds it with NODE_LAT, NODE_LON at `house`: the stations the pack kept, each with
+    the km the pack stored (whole, from the cell's middle), and the shape query's own answer."""
+    out = []
+    for r in ring_rows(house)[1:]:
+        out.append({"sensor_id": r["sensor_id"], "source": r["source"], "name": r["name"], "lat": r["lat"], "lon": r["lon"],
+                    "indoor": False, "network": "IQAir", "km": float(round(h3.great_circle_distance(_cc, (r["lat"], r["lon"]), unit="km"))),
+                    "pm25": 9.0 + int(r["sensor_id"].rsplit("-", 1)[1]) % 7, "silent_minutes": 10, "last_ts": "2026-11-28T00:00:00+00:00", "reporting": True})
+    return out
+
+
+def nb_q(house):
+    def q(sql, *a):
+        if "FROM sensors s LEFT JOIN stats" in sql:
+            return [dict(r) for r in nearby_rows(house)]
+        return [{"stations": len(nearby_rows(house)), "lowest": 9.0, "p25": 10.0, "median": 12.0, "p75": 13.0,
+                 "highest": 15.0, "nearest_km": 0, "mine": 11.0, "mine_sensors": 1}]
+    return q
+
+
+def req(trusted):
+    return _types.SimpleNamespace(state=_types.SimpleNamespace(share_trusted=trusted))
+
+
+NB.packs.stations = lambda: [{"source": "baliairdispatch", "radius": "BAD_RADIUS_KM", "pack": "bali-air-dispatch",
+                              "prefix": "bad-", "on": True, "attribution": ["Bali Air Dispatch"]}]
+said, kept = {}, {}
+for name, p in (("A", A), ("B", B)):
+    at(p)
+    NB.q = nb_q(p)
+    said[name] = _json.dumps(NB.nearby(req(False)), sort_keys=True, default=str)
+    kept[name] = NB.nearby(req(True))
+assert said["A"] == said["B"], "a stranger's /nearby is one answer for every point of the cell"
+_body = _json.loads(said["A"])
+assert 1 < len(_body["ring"]) < len(nearby_rows(A)), f"a stranger's ring is the stations every point of the cell keeps: {len(_body['ring'])}"
+assert all(s["km"] == int(s["km"]) and dp(s["lat"]) <= 3 and dp(s["lon"]) <= 3 for s in _body["ring"]), _body["ring"][:3]
+assert _body["nearest_km"] == min(s["km"] for s in _body["ring"]) and "source" not in _body["ring"][0], _body
+for p in (A, B):
+    for d in (3, 4, 7):
+        assert f"{p[0]:.{d}f}" not in said["A"] and f"{p[1]:.{d}f}" not in said["A"], f"a stranger's /nearby holds NODE_LAT, NODE_LON at {d} dp"
+assert kept["A"]["ring"] == [{k: v for k, v in r.items() if k != "source"} for r in nearby_rows(A)], \
+    "the household's token reads the ring as stored"
+try:
+    NB.nearby(req(False), audit=True)
+    raise AssertionError("a stranger's ?audit=1 must be refused")
+except NB.HTTPException as e:
+    assert e.status_code == 403 and "token" in e.detail, e.detail
+print(f"open: /nearby's ring is one answer for every point of the cell ({len(_body['ring'])} stations), and the audit needs the token")
+
+level("open")
+OBS = [{"sensor_id": "forecast-bmkg", "metric": "fc_temp", "value": 29.0, "ts": "2026-11-28T00:00:00+00:00", "name": "BMKG forecast",
+        "kind": "model", "scale": "community", "local": False, "cadence": "PT3H",
+        "meta": {"attribution": "BMKG", "adm4": "51.03.05.2002", "km_from_node": 0.19, "desa": "Ungasan"}},
+       {"sensor_id": "lab-x", "metric": "x", "value": 1.0, "ts": "2026-11-28T00:00:00+00:00", "name": "Lab", "kind": "facility",
+        "scale": "community", "local": False, "cadence": "P30D",
+        "meta": {"attribution": "fablabs.io", "distance_km": 3.3, "slug": "x", "host": "never.local"}},
+       {"sensor_id": "hydro-point", "metric": "river_m", "value": 5300.0, "ts": "2026-11-28T00:00:00+00:00", "name": "Rivers",
+        "kind": "model", "scale": "city", "local": False, "cadence": "P1D",
+        "meta": {"attribution": "HydroSHEDS", "sentence": "4.9 km to a river", "radius_km": 25}}]
+main.q = lambda sql, *a: [dict(r, meta=dict(r["meta"])) for r in OBS] if "FROM observations" in sql else []
+_o = lan.get("/observations").json()
+assert [r["meta"] for r in _o] == [{"attribution": "BMKG"}, {"attribution": "fablabs.io", "distance_km": 3.3, "slug": "x"},
+                                   {"attribution": "HydroSHEDS"}], _o
+assert local.get("/observations").json() == OBS and lan.get("/observations", headers=ADMIN).json() == OBS, \
+    "this machine and the token read meta as stored"
+print("open: /observations cuts meta to what /sensors keeps for a reader without a token")
+
+ALERTS = [{"id": 7, "ts": "2026-11-28T00:00:00+00:00", "rule_id": "fire/fire_near", "sensor_id": "firms-fires", "level": "info",
+           "text": "Satellites saw fire 76 km north-west of the house", "buttons": None, "acted_at": None}]
+main.q = lambda sql, *a: [dict(r) for r in ALERTS] if "FROM alerts" in sql else []
+_a = lan.get("/alerts").json()
+assert _a == [dict(ALERTS[0], text=None)], f"a reader without a token gets no alert text: {_a}"
+assert local.get("/alerts").json() == ALERTS and lan.get("/alerts", headers=ADMIN).json() == ALERTS, "the household reads its texts"
+print("open: /alerts gives a reader without a token every alert and no text")
+
+# /report/latest: a reader without a token gets no text from a report written before the cut (main.cut_at), or from
+# any report when no cut is recorded; one written after keeps its text, and the household reads every text.
+from datetime import datetime as _dt, timezone as _tz  # noqa: E402
+REPORT = {"id": 3, "ts": "2026-11-28T09:00:00+00:00", "due_local": None, "window_hours": 24, "depth": "full", "rung": "template",
+          "text": "The nearest clinic is 900 m away.", "sent": True, "held_quiet": False, "fallback_reason": None}
+_db0, _cut0 = main.db, main.cut_at
+main.q = lambda sql, *a: [dict(REPORT)] if "FROM reports" in sql else []
+
+
+class _NoCur:
+    def __enter__(self): return self
+    def __exit__(self, *a): return False
+    def cursor(self): return self
+
+
+main.db = lambda: _NoCur()
+for cut, stranger in ((_dt(2026, 11, 28, 12, tzinfo=_tz.utc), None), (None, None), (_dt(2026, 11, 28, 6, tzinfo=_tz.utc), REPORT["text"])):
+    main.cut_at = lambda cur, _c=cut: _c
+    assert lan.get("/report/latest").json()["text"] == stranger, f"a reader without a token, cut at {cut}"
+    assert lan.get("/report/latest", headers=ADMIN).json()["text"] == REPORT["text"] and local.get("/report/latest").json()["text"] == REPORT["text"], \
+        "the household reads every report's text"
+main.db, main.cut_at = _db0, _cut0
+print("open: /report/latest gives a reader without a token no text from a report written before the cut")
 main.packs.stations, main.q, main.packs.module = _stations0, _sensors0, _module0
 at((-8.6478291, 115.1385412))
 

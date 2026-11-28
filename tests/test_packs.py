@@ -32,6 +32,20 @@ m = {k: v for _, _, k, v in r}
 assert s[0]["kind"] == "model" and s[0]["scale"] == "bioregion" and not s[0]["local"]
 assert m["wave_height_m"] == 1.72 and m["sea_surface_temp"] == 27.4 and m["swell_period_s"] == 11.1
 assert 4 < s[0]["meta"]["distance_km"] < 6, "the node is ~5 km from that ocean cell"
+# two node points inside one res-8 cell give the same sensor: distance_km whole km from the cell's middle, and a name
+# that carries the sea cell's public point and no distance
+import h3  # noqa: E402
+_cell = h3.latlng_to_cell(-8.8271, 115.15709, 8)
+_c, _v = h3.cell_to_latlng(_cell), h3.cell_to_boundary(_cell)
+CORNERS = [(_c[0] + 0.8 * (v[0] - _c[0]), _c[1] + 0.8 * (v[1] - _c[1])) for v in (_v[0], _v[3])]
+_two = []
+for la, lo in CORNERS:
+    os.environ.update(NODE_LAT=str(la), NODE_LON=str(lo))
+    _two.append(coast.fetch(HC(marine))[0][0])
+assert _two[0] == _two[1], f"two points in one cell, one sea sensor: {_two}"
+assert _two[0]["meta"]["distance_km"] == int(_two[0]["meta"]["distance_km"]), _two[0]["meta"]
+assert _two[0]["name"] == "Sea, nearest cell (-8.79, 115.13)", _two[0]["name"]
+os.environ.update(NODE_LAT="-8.8271", NODE_LON="115.15709")
 os.environ.update(NODE_LAT="-8.5069", NODE_LON="115.2625", COAST_MAX_KM="10")     # Ubud
 try:
     coast.fetch(HC(marine)); raise AssertionError("an inland node must be refused")

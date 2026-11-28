@@ -150,6 +150,8 @@ def ring(hc, node_lat: float, node_lon: float, radius_km: float,
         r = hc.get(LATEST)
         r.raise_for_status()
         rows = r.json().get("readings", [])
+    import ground  # noqa: PLC0415
+    mid = ground.middle(node_lat, node_lon)     # a station's stored km: whole, from the middle of the node's res-8 cell
     for row, verdict in verdicts(rows, node_lat, node_lon, radius_km,
                                  skip_station_ids, exclude_ids, min_separation_m, include_indoor,
                                  include_ids):
@@ -162,7 +164,7 @@ def ring(hc, node_lat: float, node_lon: float, radius_km: float,
             "lat": row["latitude"], "lon": row["longitude"],
             "indoor": bool(row.get("suspected_indoor")), "local": False,
             "meta": {"network": row.get("source"), "corrected": row.get("pm25_corrected"),
-                     "km": round(sources.km(node_lat, node_lon, row["latitude"], row["longitude"]), 2),
+                     "km": round(sources.km(*mid, row["latitude"], row["longitude"])),
                      "attribution": ATTRIBUTION},
         })
         if known := (stations or {}).get(str(row["station_id"])):

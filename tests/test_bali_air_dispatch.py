@@ -129,4 +129,13 @@ assert s[0]["meta"]["official"] is True and "from_index" not in s[0]["meta"], s[
 s, _ = B.ring(HC(None), *N, 15, rows=two)
 assert [x["sensor_id"] for x in s] == ["bad--7"] and "official" not in s[0]["meta"], "blank BAD_INCLUDE changes nothing"
 
+# a station's km in meta is whole km from the middle of the node's res-8 cell: two node points inside one cell store the
+# same sensor rows
+import h3  # noqa: E402
+_cell = h3.latlng_to_cell(*N, 8)
+_c, _v = h3.cell_to_latlng(_cell), h3.cell_to_boundary(_cell)
+_two = [B.ring(HC(None), _c[0] + 0.8 * (v[0] - _c[0]), _c[1] + 0.8 * (v[1] - _c[1]), 15, rows=two)[0] for v in (_v[0], _v[3])]
+assert _two[0] == _two[1], f"two points in one cell, one ring: {_two}"
+assert all(x["meta"]["km"] == int(x["meta"]["km"]) for x in _two[0]), [x["meta"]["km"] for x in _two[0]]
+
 print("test_bali_air_dispatch: ok")

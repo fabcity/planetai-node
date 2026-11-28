@@ -51,13 +51,14 @@ check("nowhere in a box reads Global", A.region(-33.4, -70.6, 150) == "Global")
 j1 = (FIX / "J1_VIIRS_C2_SouthEast_Asia_24h_bali.csv").read_text()
 j2 = (FIX / "J2_VIIRS_C2_SouthEast_Asia_24h_bali.csv").read_text()
 rows = list(csv.DictReader(io.StringIO(j1)))
-within = [r for r in rows if A.km(*BALI, float(r["latitude"]), float(r["longitude"])) <= 150]
+MID = A.ground.middle(*BALI)            # the ring is measured from the middle of the node's res-8 cell
+within = [r for r in rows if A.km(*MID, float(r["latitude"]), float(r["longitude"])) <= 150]
 low = sum(1 for r in within if r["confidence"] == "low")
 s1, s2 = A.parse(j1, *BALI, 150), A.parse(j2, *BALI, 150)
-check("NOAA-20: 35 detections in 150 km once the low-confidence ones go", len(s1) == 35, len(s1))
+check("NOAA-20: 33 detections in 150 km once the low-confidence ones go", len(s1) == 33, len(s1))
 check("the public file spells confidence `low`, and those go", low > 0 and len(s1) + low == len(within), (low, len(within)))
 check("NOAA-21: 34 detections", len(s2) == 34, len(s2))
-check("the row from far away is not kept", all(A.km(*BALI, s[1], s[2]) <= 150 for s in s1 + s2))
+check("the row from far away is not kept", all(A.km(*MID, s[1], s[2]) <= 150 for s in s1 + s2))
 check("the API's `l` is low too", A.parse("latitude,longitude,acq_date,acq_time,confidence,frp\n-8.8,115.1,2026-10-14,0100,l,3\n", *BALI, 25) == [])
 try:
     A.parse("Invalid MAP_KEY", *BALI, 25)
@@ -68,7 +69,8 @@ except RuntimeError as e:
 # ---------------------------------------------------------------- one place per cell, whoever saw it
 twice = [[1.0, -8.5, 115.5, 3.0], [2.0, -8.5001, 115.5001, 7.0]]       # NOAA-20, then NOAA-21 ~50 min later
 check("one fire seen by two satellites is one place", len(A.places(twice)) == 1 and A.places(twice)[0][3] == 7.0)
-check("NOAA-20 and NOAA-21 together: 57 places from 69 detections", len(A.places(s1 + s2)) == 57, len(A.places(s1 + s2)))
+check("NOAA-20 and NOAA-21 together: 56 places from 67 detections", len(A.places(s1 + s2)) == 56 and len(s1 + s2) == 67,
+      (len(A.places(s1 + s2)), len(s1 + s2)))
 
 
 def m(readings):
@@ -79,20 +81,37 @@ def m(readings):
 calm = m(A.summarise(s1 + s2, AT, *BALI, 25, 150, None))
 check("Bali: nothing in the local 25 km ring", calm["fires_local_24h"] == 0 and calm["frp_local_mw"] == 0, calm)
 check("Bali: 51 burning places within 150 km in the last 24 h", calm["fires_region_24h"] == 51, calm)
-check("Bali: the nearest is 75 km north-west (East Java)", calm["fires_nearest_km"] == 75.1 and calm["fires_nearest_bearing"] == 309, calm)
+check("Bali: the nearest is 76 km north-west (East Java), whole km from the cell's middle",
+      calm["fires_nearest_km"] == 76 and calm["fires_nearest_bearing"] == 309, calm)
 check("no wind, no upwind numbers", not any("upwind" in k or "wind_from" in k for k in calm), calm)
 se = m(A.summarise(s1 + s2, AT, *BALI, 25, 150, 135.0))
 check("a south-east wind puts 3 upwind", se["fires_region_upwind"] == 3 and se["fires_local_upwind"] == 0, se)
 nw = m(A.summarise(s1 + s2, AT, *BALI, 25, 150, 315.0))
-check("a north-west wind puts 47 upwind, the nearest the 75 km one", nw["fires_region_upwind"] == 47 and nw["fires_upwind_km"] == 75.1, nw)
+check("a north-west wind puts 47 upwind, the nearest the 76 km one", nw["fires_region_upwind"] == 47 and nw["fires_upwind_km"] == 76, nw)
 wide = m(A.summarise(s1 + s2, AT, *BALI, 100, 150, 315.0))
 check("a 100 km local ring reaches 2, both upwind of a north-west wind", wide["fires_local_24h"] == 2 and wide["fires_local_upwind"] == 2, wide)
 check("a day later the ring is empty, and no nearest is invented",
       "fires_nearest_km" not in m(A.summarise(s1 + s2, AT + timedelta(days=2), *BALI, 25, 150, 315.0)))
 menorca = m(A.summarise(A.parse((FIX / "J1_VIIRS_C2_Europe_24h_menorca.csv").read_text(), *MENORCA, 500), AT, *MENORCA, 25, 500, None))
 check("Menorca: 33 places within 500 km, the nearest 249 km north-west", menorca["fires_region_24h"] == 33
-      and menorca["fires_nearest_km"] == 248.8 and menorca["fires_nearest_bearing"] == 315, menorca)
+      and menorca["fires_nearest_km"] == 249 and menorca["fires_nearest_bearing"] == 315, menorca)
 
+
+# ---------------------------------------------------------------- measured from the middle of the node's cell
+# Two node points inside one res-8 cell store the same figures: every distance, bearing and count is taken from the
+# cell's middle, and the distances are whole km.
+import h3  # noqa: E402
+_cell = h3.latlng_to_cell(*BALI, 8)
+_c, _v = h3.cell_to_latlng(_cell), h3.cell_to_boundary(_cell)
+P1, P2 = [(_c[0] + 0.8 * (v[0] - _c[0]), _c[1] + 0.8 * (v[1] - _c[1])) for v in (_v[0], _v[3])]   # near opposite corners
+check("the two points share one cell", h3.latlng_to_cell(*P1, 8) == h3.latlng_to_cell(*P2, 8))
+for wind_from in (None, 315.0):
+    one = A.summarise(A.parse(j1 + j2[j2.index("\n") + 1:], *P1, 150), AT, *P1, 100, 150, wind_from)
+    two = A.summarise(A.parse(j1 + j2[j2.index("\n") + 1:], *P2, 150), AT, *P2, 100, 150, wind_from)
+    check(f"two points in one cell give identical fire figures (wind {wind_from})", one == two, (one, two))
+    for metric in ("fires_nearest_km", "fires_upwind_km", "fires_nearest_bearing", "fires_upwind_bearing"):
+        v = m(one).get(metric)
+        check(f"{metric} is whole", v is None or v == int(v), v)
 
 # ---------------------------------------------------------------- polling: off, first start, paced, unchanged, changed
 def table(hours_ago):
@@ -195,6 +214,19 @@ check("with a key it asks the area API for the ring's box, and no HEAD",
       hc.calls and hc.calls[0][0] == "GET" and "/api/area/csv/" in hc.calls[0][1] and "VIIRS_NOAA20_NRT" in hc.calls[0][1], hc.calls)
 check("a failure still records the ask, so a server that is down is not asked every five minutes",
       A.fetch(HC()) == ([], []))
+# the box the area API is asked for is drawn round the middle of the node's cell: two points in one cell ask for the
+# same box and store the same regional counts
+asked, region_rows = [], []
+for pt in (P1, P2):
+    os.environ.update(NODE_LAT=str(pt[0]), NODE_LON=str(pt[1]), FIRMS_MAP_KEY="k")
+    A._save({})
+    hc = HC()
+    _, rows = A.fetch(hc)
+    asked.append(hc.calls[0][1])
+    region_rows.append(sorted((r[0], r[2], r[3]) for r in rows if r[2].startswith("fires_region_")))
+check("two points in one cell ask FIRMS for the same box", asked[0] == asked[1], asked)
+check("and store the same fires_region_* figures", region_rows[0] == region_rows[1] and region_rows[0], region_rows)
+os.environ.update(NODE_LAT=str(BALI[0]), NODE_LON=str(BALI[1]))
 os.environ.pop("FIRMS_MAP_KEY")
 os.environ.pop("FIRE_SATELLITES")
 

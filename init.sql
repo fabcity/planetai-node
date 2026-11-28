@@ -701,3 +701,14 @@ CREATE TABLE IF NOT EXISTS feed_queue (
 CREATE INDEX IF NOT EXISTS feed_queue_open ON feed_queue (done, ts);
 REVOKE ALL ON subscribers FROM planetai_ro;
 INSERT INTO schema_version (version) VALUES ('0.68') ON CONFLICT DO NOTHING;
+
+-- 0.69: the distances, bearings and nearest places a node keeps are measured from the middle of its res-8 cell (28 Nov
+-- 2026). The rows of those figures written before are removed once, by the first poll of the code that measures that
+-- way (app/main.py cut_once), which writes this row as it does: `cut_at` is when. update.sh takes its backup before
+-- this file is applied, and the code before it keeps writing until the containers restart, which is why the removal
+-- waits for the new code and does not run here. /export leaves out the text of an alert raised before `cut_at`.
+CREATE TABLE IF NOT EXISTS data_cuts (
+  name   TEXT PRIMARY KEY,
+  cut_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+INSERT INTO schema_version (version) VALUES ('0.69') ON CONFLICT DO NOTHING;

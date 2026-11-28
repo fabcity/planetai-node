@@ -37,10 +37,15 @@ ER, EER = _load("earth"), _load("earth-engine")
 
 fails = []
 out = Path(tmp)
-# exactly what node #1 has in out/, old node name and all
-for n in ("bayu-2-2016-sentinel-3km.png", "bayu-2-2019-sentinel-3km.png",
-          "bayu-2-2022-sentinel-3km.png", "bayu-2-2025-sentinel-3km.png",
-          "bayu-2-2012-landsat-2km.png", "bayu-2-2025-landsat-2km.png",
+# a frame's name carries the res-8 cell it is centred on, after the node's name of the day it was made, so a renamed
+# node finds its frames and a frame centred anywhere else is never served
+import h3  # noqa: E402
+CELL = h3.latlng_to_cell(-8.8, 115.1, 8)
+for n in (f"bayu-2-{CELL}-2016-sentinel-3km.png", f"bayu-2-{CELL}-2019-sentinel-3km.png",
+          f"bayu-2-{CELL}-2022-sentinel-3km.png", f"bayu-2-{CELL}-2025-sentinel-3km.png",
+          f"bayu-2-{CELL}-2012-landsat-2km.png", f"bayu-2-{CELL}-2025-landsat-2km.png",
+          "bayu-2-2013-sentinel-3km.png",            # made before frames named their cell: never served
+          f"bayu-2-{h3.latlng_to_cell(-8.7, 115.2, 8)}-2014-sentinel-3km.png",   # centred on another cell
           "bayu-2-timelapse-sentinel.html",          # not a frame
           "change_2024_2025.png", "notes-sentinel-x.png"):
     (out / n).write_bytes(b"\x89PNG")
@@ -52,6 +57,31 @@ if sorted(EER.frames("landsat")) != [2012, 2025]:
     fails.append(f"landsat frames found {sorted(EER.frames('landsat'))}, expected [2012, 2025]")
 if any("timelapse" in p.name or p.name.startswith("change_") for p in got.values()):
     fails.append("the glob picked up something that is not a frame")
+
+try:
+    EER.earth_frame_png(year=2013, source="sentinel")
+    fails.append("a frame whose name carries no cell must not be served")
+except HTTPException:
+    pass
+
+# the timelapse is centred on the middle of the node's res-8 cell, and names its frames by that cell: two node
+# points inside one cell ask Earth Engine for the same square
+import contextlib  # noqa: E402
+import io  # noqa: E402
+import runpy  # noqa: E402
+import types  # noqa: E402
+sys.modules.setdefault("ee", types.ModuleType("ee"))
+_c, _v = h3.cell_to_latlng(CELL), h3.cell_to_boundary(CELL)
+said = []
+for v in (_v[0], _v[3]):                                    # near opposite corners of the cell
+    os.environ.update(NODE_LAT=str(_c[0] + 0.8 * (v[0] - _c[0])), NODE_LON=str(_c[1] + 0.8 * (v[1] - _c[1])))
+    buf, sys.argv = io.StringIO(), ["timelapse", "--dry-run", "--years", "2016,2025"]
+    with contextlib.redirect_stdout(buf):
+        runpy.run_path(str(ROOT / "packs/earth-engine/timelapse.py"), run_name="__main__")
+    said.append(buf.getvalue())
+os.environ.update(NODE_LAT="-8.8", NODE_LON="115.1")
+if said[0] != said[1] or f"{_c[0]}, {_c[1]}" not in said[0] or CELL not in said[0]:
+    fails.append(f"the timelapse must be centred on the cell's middle and name the cell: {said}")
 
 # the whole point: the filename carries the node's OLD name and must still be found
 if not all("bayu-2-" in p.name for p in got.values()):

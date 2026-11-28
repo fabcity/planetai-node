@@ -29,12 +29,14 @@ def fetch(hc):
     dist = _km(lat, lon, cell_lat, cell_lon)
     if dist > float(os.getenv("COAST_MAX_KM", "30")):
         raise RuntimeError(f"nearest ocean cell is {dist:.0f} km away; this node is not coastal (COAST_MAX_KM)")
+    import ground  # noqa: PLC0415; the app's, as every adapter is loaded
+    mid = _km(*ground.middle(lat, lon), cell_lat, cell_lon)   # what is stored: from the middle of the node's res-8 cell
     cur = d.get("current") or {}
     t = cur.get("time")
     ts = datetime.fromisoformat(t).replace(tzinfo=timezone.utc) if t else datetime.now(timezone.utc)
-    sensor = {"sensor_id": "marine-point", "source": "open-meteo-marine", "name": f"Sea, {dist:.0f} km off ({cell_lat:.2f}, {cell_lon:.2f})",
+    sensor = {"sensor_id": "marine-point", "source": "open-meteo-marine", "name": f"Sea, nearest cell ({cell_lat:.2f}, {cell_lon:.2f})",
               "lat": cell_lat, "lon": cell_lon, "indoor": False, "local": False, "kind": "model", "scale": "bioregion",
               "cadence": "PT1H", "meta": {"attribution": "Open-Meteo Marine (CC BY 4.0); Copernicus Marine / MFWAM",
-                                          "distance_km": round(dist, 1), "units": d.get("current_units")}}
+                                          "distance_km": round(mid), "units": d.get("current_units")}}
     readings = [(ts, "marine-point", m, float(cur[k])) for k, m in MAP.items() if cur.get(k) is not None]
     return [sensor], readings

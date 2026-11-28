@@ -113,16 +113,17 @@ check("every locale covers the whole vocabulary",
       all(set(v) == set(adapter.CAPABILITY_WORDS["en"]) for v in adapter.CAPABILITY_WORDS.values()))
 # Found by running the pack on pai-clean, not by reading it: a node inside a fab lab is the
 # deployment this pack most wants, and "0.0 km" reads like a broken number however true it is.
-check("a lab at the node's own address reads as <0.1 km, not 0.0 km",
-      adapter.ask_line([{"name": "Here", "meta": {"distance_km": 0.0, "capabilities": []}}])
-      == "Here, <0.1 km")
-check("a lab 100 m away still gets its number",
-      adapter.ask_line([{"name": "There", "meta": {"distance_km": 0.1, "capabilities": []}}])
-      == "There, 0.1 km")
+# distance_km is whole km from the middle of the node's cell, so a lab in or beside the cell is 0.
+check("a lab at the node's own address reads as <1 km, not 0 km",
+      adapter.ask_line([{"name": "Here", "meta": {"distance_km": 0, "capabilities": []}}])
+      == "Here, <1 km")
+check("a lab a kilometre away still gets its number",
+      adapter.ask_line([{"name": "There", "meta": {"distance_km": 1, "capabilities": []}}])
+      == "There, 1 km")
 check("no ask line when nothing is near", adapter.ask_line([]) is None)
 check("a lab with no capabilities still gets a line",
-      adapter.ask_line([{"name": "Bare Lab", "meta": {"distance_km": 3.0, "capabilities": []}}])
-      == "Bare Lab, 3.0 km")
+      adapter.ask_line([{"name": "Bare Lab", "meta": {"distance_km": 3, "capabilities": []}}])
+      == "Bare Lab, 3 km")
 # If fablabs.io adds a seventh token, an operator must see the new word rather than a shorter list.
 check("an unknown capability is shown, not dropped",
       "telekinesis" in adapter.ask_line(
@@ -150,6 +151,44 @@ os.environ.pop("MAKE_ENABLED", None)
 check("fetch() reads nothing at all while off", adapter.fetch(None) == ([], []))
 if _saved is not None:
     os.environ["MAKE_ENABLED"] = _saved
+
+# ---------------------------------------------------------------- distance_km from the middle of the node's cell
+# Two node points inside one res-8 cell store the same labs with the same distance_km, in whole km. The database
+# answers "never fetched" and the archive is the fixture, pinned.
+import types  # noqa: E402
+
+import h3  # noqa: E402
+
+
+class _Cur:
+    def __enter__(self): return self
+    def __exit__(self, *a): return False
+    def execute(self, *a): pass
+    def fetchone(self): return (None,)
+
+
+class _Con(_Cur):
+    def cursor(self): return _Cur()
+
+
+class _HC:
+    def get(self, url, timeout=None):
+        return types.SimpleNamespace(raise_for_status=lambda: None, json=lambda: LABS)
+
+
+adapter.psycopg = types.SimpleNamespace(connect=lambda url: _Con())
+os.environ.update(MAKE_ENABLED="1", MAKE_SNAPSHOT="labs-2026-09-20.json", DATABASE_URL="postgresql://nowhere")
+_cell = h3.latlng_to_cell(*NODE, 8)
+_c, _v = h3.cell_to_latlng(_cell), h3.cell_to_boundary(_cell)
+_two = []
+for v in (_v[0], _v[3]):                                    # near opposite corners of the cell
+    os.environ.update(NODE_LAT=str(_c[0] + 0.8 * (v[0] - _c[0])), NODE_LON=str(_c[1] + 0.8 * (v[1] - _c[1])))
+    _two.append([(s_["sensor_id"], s_["meta"]["distance_km"]) for s_ in adapter.fetch(_HC())[0]])
+os.environ.update(NODE_LAT=str(NODE[0]), NODE_LON=str(NODE[1]))
+for k in ("MAKE_ENABLED", "MAKE_SNAPSHOT"):
+    os.environ.pop(k)
+check("two points in one cell store the same labs at the same distance", _two[0] == _two[1] and _two[0], _two)
+check("each distance_km is whole", all(d == int(d) for _, d in _two[0]), _two[0])
 
 # ---------------------------------------------------------------- what the pack promises about itself
 

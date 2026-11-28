@@ -59,12 +59,14 @@ def bmkg(hc, adm4: str, node_lat: float, node_lon: float):
     steps = [s for group in (d.get("data") or [{}])[0].get("cuaca") or [] for s in group]
     issued = _utc((steps[0] if steps else {}).get("analysis_date"))
     sid = "forecast-bmkg"
+    import ground  # noqa: PLC0415; the app's; its km is whole, from the middle of the node's res-8 cell
+    mlat, mlon = ground.middle(node_lat, node_lon)
     sensors = [_sensor(sid, f"BMKG forecast — {loc.get('desa')}, {loc.get('kecamatan')}",
                        loc.get("lat"), loc.get("lon"),
                        {"adm4": adm4, "desa": loc.get("desa"), "kecamatan": loc.get("kecamatan"),
                         "kotkab": loc.get("kotkab"), "issued": issued.isoformat() if issued else None,
                         "km_from_node": None if loc.get("lat") is None else round(
-                            _km(node_lat, node_lon, float(loc["lat"]), float(loc["lon"])), 2),
+                            _km(mlat, mlon, float(loc["lat"]), float(loc["lon"]))),
                         "attribution": "BMKG (Badan Meteorologi, Klimatologi, dan Geofisika), api.bmkg.go.id"})]
     cutoff = datetime.now(timezone.utc) + timedelta(hours=HOURS)
     readings = []
@@ -182,8 +184,10 @@ def marine(hc, points: list[dict]):
     if km > float(os.getenv("COAST_MAX_KM", "30")):
         log.info("forecast: nearest sea cell is %.0f km away; this node is not coastal (COAST_MAX_KM), no sea forecast", km)
         return [], []
-    sensor = _sensor("forecast-marine", f"Open-Meteo Marine forecast, sea cell {km:.0f} km off", cell_lat, cell_lon,
-                     {"fetched": fetched.isoformat(), "issued": None, "cell": p.get("cell"), "distance_km": round(km, 1),
+    import ground  # noqa: PLC0415; the app's; the stored km is whole, from the middle of the node's res-8 cell
+    mid = _km(*ground.middle(p["lat"], p["lon"]), cell_lat, cell_lon)
+    sensor = _sensor("forecast-marine", "Open-Meteo Marine forecast, nearest sea cell", cell_lat, cell_lon,
+                     {"fetched": fetched.isoformat(), "issued": None, "cell": p.get("cell"), "distance_km": round(mid),
                       "note": "Open-Meteo publishes no model run time; `fetched` is when this node asked.",
                       "licence": "CC-BY 4.0, free tier non-commercial only",
                       "attribution": "Open-Meteo Marine, open-meteo.com; Copernicus Marine / MFWAM"})

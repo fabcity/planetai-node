@@ -51,6 +51,7 @@ except ImportError:
     print("roles: request checks skipped (pip install -r app/requirements.txt)")
     raise SystemExit(0)
 import json  # noqa: E402
+from datetime import datetime, timezone  # noqa: E402
 import logging  # noqa: E402
 import time  # noqa: E402
 logging.disable(logging.WARNING)
@@ -108,6 +109,10 @@ class _Cur:
             return [{"sensor_id": "ag-in", "name": "ag-in", "source_name": None}] + _KIDS_IN
         if "source_name" in self.sql:
             return [{"room": None, "name": s["name"], "source_name": None} for s in (_IN, _OUT)]
+        if "information_schema" in self.sql:          # main.cut_at: the cut ran before the report below was written
+            return [{"n": 1}]
+        if "FROM data_cuts" in self.sql:
+            return [{"cut_at": datetime(2026, 11, 25, 0, tzinfo=timezone.utc)}]
         return []
 
 

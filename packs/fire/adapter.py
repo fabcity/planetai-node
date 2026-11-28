@@ -32,6 +32,8 @@ from datetime import datetime, timedelta, timezone
 from math import asin, atan2, cos, degrees, radians, sin, sqrt
 from pathlib import Path
 
+import ground
+
 log = logging.getLogger("planetai.fire")
 
 BASE = "https://firms.modaps.eosdis.nasa.gov/data/active_fire"
@@ -82,6 +84,7 @@ def parse(text: str, lat: float, lon: float, reach_km: float) -> list[list]:
     """[epoch, lat, lon, frp] for every detection within reach_km that is not low confidence. Columns are read by
     name: the public files and the API differ (no `instrument` in the public C2 file), and the confidence is
     `low/nominal/high` in one and `l/n/h` in the other, so only its first letter is read."""
+    lat, lon = ground.middle(lat, lon)        # the reach is from the middle of the node's cell, as summarise() is
     if "latitude" not in text[:400]:
         raise RuntimeError("FIRMS answered something that is not a fire table: " + text.strip()[:60].replace("\n", " "))
     out = []
@@ -114,7 +117,9 @@ def places(spots: list[list]) -> list[list]:
 def summarise(spots: list[list], at: datetime, lat: float, lon: float, local_km: float, region_km: float,
               wind_from: float | None) -> list[tuple]:
     """The readings for the 24 hours before `at`. No nearest fire is invented when there is none, and nothing is
-    said about upwind without a wind to reckon it by."""
+    said about upwind without a wind to reckon it by. Every distance, bearing and count is taken from the middle of
+    the res-8 cell (lat, lon) is in, and the distances are kept as whole km."""
+    lat, lon = ground.middle(lat, lon)
     end = at.timestamp()
     seen = []
     for t, la, lo, frp in places([s for s in spots if end - 86400 < s[0] <= end]):
@@ -128,7 +133,7 @@ def summarise(spots: list[list], at: datetime, lat: float, lon: float, local_km:
            (ts, SENSOR, "frp_region_mw", round(sum(s[2] for s in seen), 1))]
     if seen:
         k, b, _ = min(seen)
-        out += [(ts, SENSOR, "fires_nearest_km", round(k, 1)), (ts, SENSOR, "fires_nearest_bearing", round(b))]
+        out += [(ts, SENSOR, "fires_nearest_km", float(round(k))), (ts, SENSOR, "fires_nearest_bearing", round(b))]
     if wind_from is not None:
         up = [s for s in seen if upwind(s[1], wind_from)]
         out += [(ts, SENSOR, "fires_local_upwind", float(sum(1 for s in up if s[0] <= local_km))),
@@ -136,7 +141,7 @@ def summarise(spots: list[list], at: datetime, lat: float, lon: float, local_km:
                 (ts, SENSOR, "fire_wind_from_deg", round(wind_from))]
         if up:
             k, b, _ = min(up)
-            out += [(ts, SENSOR, "fires_upwind_km", round(k, 1)), (ts, SENSOR, "fires_upwind_bearing", round(b))]
+            out += [(ts, SENSOR, "fires_upwind_km", float(round(k))), (ts, SENSOR, "fires_upwind_bearing", round(b))]
     return out
 
 
@@ -204,7 +209,8 @@ def _read(hc, url: str, old: dict | None, keyed: bool):
 def fetch(hc):
     if os.getenv("FIRE_ENABLED", "0").strip() != "1":
         return [], []
-    lat, lon = float(os.environ["NODE_LAT"]), float(os.environ["NODE_LON"])
+    # the middle of the node's cell: the box asked for, the file chosen and every figure are drawn round it
+    lat, lon = ground.middle(float(os.environ["NODE_LAT"]), float(os.environ["NODE_LON"]))
     local_km = float(os.getenv("FIRE_LOCAL_KM") or 25)
     region_km = max(float(os.getenv("FIRE_REGION_KM") or 150), local_km)
     now = datetime.now(timezone.utc)

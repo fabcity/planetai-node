@@ -31,7 +31,7 @@ One row per thing that produces readings, and per place the node was told about.
 
 The one `survey` row is `things:<node>`, the counts of the things a home keeps. Nothing writes `peer`; it is named in `init.sql` and in the `custody` expression.
 
-A facility has no readings. `kind = 'facility'` is a place with a name and a point, and the `make` pack writes it: with `MAKE_ENABLED=1` it stores each active lab within `MAKE_RADIUS_KM` as one row, `sensor_id` `lab-<slug>`, `source` `fablabs-io`, `local` false, `scale` `community`, `cadence` `P30D`. Its `meta` holds `slug`, `capabilities`, `kind_name`, `city`, `country_code`, `distance_km`, `url`, `registry_slug`, `snapshot`, `fetched` and `attribution`. No `readings` row is written for it, so it is in neither `stats` nor `observations`; `/issues` reads it straight from `sensors`. Because `local` is false, `custody` is false, and a fab lab can never make an Index cell say `live`.
+A facility has no readings. `kind = 'facility'` is a place with a name and a point, and the `make` pack writes it: with `MAKE_ENABLED=1` it stores each active lab within `MAKE_RADIUS_KM` as one row, `sensor_id` `lab-<slug>`, `source` `fablabs-io`, `local` false, `scale` `community`, `cadence` `P30D`. Its `meta` holds `slug`, `capabilities`, `kind_name`, `city`, `country_code`, `distance_km` (whole km from the middle of the node's res-8 cell), `url`, `registry_slug`, `snapshot`, `fetched` and `attribution`. No `readings` row is written for it, so it is in neither `stats` nor `observations`; `/issues` reads it straight from `sensors`. Because `local` is false, `custody` is false, and a fab lab can never make an Index cell say `live`.
 
 ### `readings`
 
@@ -243,7 +243,7 @@ Sensors land in `stats`. Slow sources (portals, models, maps) land in `observati
 
 ## Time and place inside the database
 
-The session time zone is `NODE_TZ`, so `date_trunc('day', ts)` and `extract(hour from ts)` mean the household's day and hour; readings themselves are UTC instants. The node's position is available to SQL as `current_setting('planetai.lat')` and `current_setting('planetai.lon')`. The app sets both on every connection it opens. A `psql` session does not go through the app, so there an hour-of-day query answers in the database's own time zone and `planetai.lat` is not set.
+The session time zone is `NODE_TZ`, so `date_trunc('day', ts)` and `extract(hour from ts)` mean the household's day and hour; readings themselves are UTC instants. The node's position is available to SQL as `current_setting('planetai.lat')` and `current_setting('planetai.lon')`, and the middle of its res-8 cell as `current_setting('planetai.clat')` and `current_setting('planetai.clon')`. The app sets both on every connection it opens. A `psql` session does not go through the app, so there an hour-of-day query answers in the database's own time zone and `planetai.lat` is not set.
 
 ## The database image
 

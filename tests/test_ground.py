@@ -184,3 +184,16 @@ assert 'data-variant="paper"' in shipped.replace('data-variant="dark"', 'data-va
 assert "#20388D" in shipped and "#7FA5E8" in shipped, (
     "the fallback carries both registers in its own <style>, or swapping the attribute changes nothing")
 print("  the ground follows the register: paper on the page, dark on the wall, geometry unchanged")
+
+# 7. middle(): the point every distance a pack stores is measured from. Two points in one res-8 cell give the same
+#    middle, the cell's centre; without h3 it is the point at two decimals, coarser than the cell.
+_c = h3.cell_to_latlng(bali_id)
+_a, _b = (_c[0] + 0.0012, _c[1] + 0.0008), (_c[0] - 0.001, _c[1] - 0.0012)
+assert h3.latlng_to_cell(*_a, 8) == h3.latlng_to_cell(*_b, 8) == bali_id
+assert ground.middle(*_a) == ground.middle(*_b) == _c, (ground.middle(*_a), ground.middle(*_b), _c)
+_h3, ground.h3 = ground.h3, None
+try:
+    assert ground.middle(-8.82716, 115.15709) == (-8.83, 115.16), ground.middle(-8.82716, 115.15709)
+finally:
+    ground.h3 = _h3
+print("  middle(): one point for every point of a cell, two decimals without h3")

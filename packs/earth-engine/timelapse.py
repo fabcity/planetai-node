@@ -110,12 +110,18 @@ def main():
     years = [int(y) for y in a.years.split(",")] if a.years else sorted(last - a.gap * i for i in range(a.n))
     lat = a.lat if a.lat is not None else float(os.environ["NODE_LAT"])
     lon = a.lon if a.lon is not None else float(os.environ["NODE_LON"])
+    # Centred on the middle of the point's res-8 cell, and named by that cell, which is how /earth/frame.png finds it.
+    sys.path.insert(0, "/app")
+    import ground  # noqa: E402, PLC0415
+    import h3  # noqa: PLC0415
+    lat, lon = ground.middle(lat, lon)
+    cell = h3.latlng_to_cell(lat, lon, 8)
     node = os.getenv("NODE_NAME", "node")
 
     if a.source == "sentinel" and min(years) < 2016:
         sys.exit(f"Sentinel-2 starts in 2015 (usable from 2016); {min(years)} needs --source landsat")
 
-    print(f"{len(years)} frames of {a.km} km around {lat}, {lon} — {', '.join(map(str, years))}  [{a.source}]")
+    print(f"{len(years)} frames of {a.km} km around {lat}, {lon}, the middle of cell {cell}; {', '.join(map(str, years))}  [{a.source}]")
     if a.dry_run:
         return
     _init()
@@ -148,7 +154,7 @@ def main():
                          "  add the role  Earth Engine Resource Writer  (keep Resource Viewer), then run this again.\n"
                          "  Reading numbers needs Viewer; making pictures needs Writer.")
             raise
-        path = os.path.join(OUT, f"{node}-{y}-{a.source}-{a.km:g}km.png")
+        path = os.path.join(OUT, f"{node}-{cell}-{y}-{a.source}-{a.km:g}km.png")
         urllib.request.urlretrieve(url, path)
         kb = os.path.getsize(path) // 1024
         print(f"  {y}  {n:4d} scenes → {os.path.basename(path)}  ({kb} kB)")
