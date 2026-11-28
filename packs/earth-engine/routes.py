@@ -12,20 +12,26 @@ from pathlib import Path
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import FileResponse
 
+import wall
+
 router = APIRouter()
 
 
 def frames(source: str = "sentinel") -> dict[int, Path]:
     """The frames `planetai run earth-engine timelapse` left in out/, by year.
 
-    Matched by glob and not by name. The pack writes `<node>-<year>-<source>-<km>km.png`, and the
+    Matched by glob and not by name. The pack writes `<node>-<cell>-<year>-<source>-<km>km.png`, and the
     node name in that filename is whatever the node was called the day the pack ran — on node #1 the
     files say `bayu-2` and NODE_NAME has since become `bayu-ungasan`, so building the name from NODE
-    finds nothing. The km changes with the pack's own settings too. The year is the only part of the
-    name this node can be sure of.
+    finds nothing. The km changes with the pack's own settings too. The cell is the res-8 cell the frame is
+    centred on: only frames centred on the middle of this node's cell are served, and a frame named
+    without a cell, or after another one, is left where it is and never read.
     """
     out = {}
-    for f in sorted(Path(os.getenv("PACK_OUT", "/app/out")).glob(f"*-[0-9][0-9][0-9][0-9]-{source}-*.png")):
+    cell = wall.home_cell()
+    if cell is None:
+        return out
+    for f in sorted(Path(os.getenv("PACK_OUT", "/app/out")).glob(f"*-{cell}-[0-9][0-9][0-9][0-9]-{source}-*.png")):
         try:
             out[int(f.stem.split("-")[-3])] = f
         except (ValueError, IndexError):        # a file that merely looks like one of ours

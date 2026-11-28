@@ -176,7 +176,7 @@ test_area_hooks|PACKS_DIR=packs PYTHONPATH=app python3 tests/test_area_hooks.py
 test_custody|PYTHONPATH=app python3 tests/test_custody.py
 test_registry|python3 tests/test_registry.py
 test_make|PYTHONPATH=app python3 tests/test_make.py
-test_fire|python3 tests/test_fire.py
+test_fire|PYTHONPATH=app python3 tests/test_fire.py
 test_check_theme|python3 tests/test_check_theme.py
 test_wire|PYTHONPATH=app python3 tests/test_wire.py
 test_events|PYTHONPATH=app python3 tests/test_events.py

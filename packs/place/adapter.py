@@ -216,7 +216,7 @@ def satellite_refresh(con, lat: float, lon: float, radius: int) -> int:
     return len(years)
 
 METRICS_SQL = """
-WITH here AS (SELECT ST_SetSRID(ST_MakePoint(%(lon)s, %(lat)s), 4326)::geography AS g),
+WITH mid AS (SELECT ST_SetSRID(ST_MakePoint(%(mlon)s, %(mlat)s), 4326)::geography AS g),
 b AS (SELECT count(*) AS n, coalesce(sum(ST_Area(geom::geography)),0) AS area,
              count(*) FILTER (WHERE (tags->>'building') = ANY(%(commercial)s) OR tags ? 'shop' OR tags ? 'office' OR tags->>'amenity' = ANY(%(food)s)) AS commercial
       FROM place_features WHERE kind='building'),
@@ -224,10 +224,10 @@ p AS (SELECT category, count(*) AS n FROM place_features WHERE kind='poi' GROUP 
 r AS (SELECT coalesce(sum(ST_Length(geom::geography)),0)/1000 AS km FROM place_features WHERE kind='road' AND NOT (tags->>'highway' = ANY(%(road_exclude)s))),
 g AS (SELECT coalesce(sum(ST_Area(geom::geography)),0) AS area FROM place_features WHERE kind='green'),
 d AS (SELECT
-  (SELECT min(ST_Distance(f.geom::geography, here.g)) FROM place_features f, here WHERE f.category='education') AS school,
-  (SELECT min(ST_Distance(f.geom::geography, here.g)) FROM place_features f, here WHERE f.category='health') AS health,
-  (SELECT min(ST_Distance(f.geom::geography, here.g)) FROM place_features f, here WHERE f.category='market') AS market,
-  (SELECT min(ST_Distance(f.geom::geography, here.g)) FROM place_features f, here WHERE f.category='worship') AS worship)
+  (SELECT min(ST_Distance(f.geom::geography, mid.g)) FROM place_features f, mid WHERE f.category='education') AS school,
+  (SELECT min(ST_Distance(f.geom::geography, mid.g)) FROM place_features f, mid WHERE f.category='health') AS health,
+  (SELECT min(ST_Distance(f.geom::geography, mid.g)) FROM place_features f, mid WHERE f.category='market') AS market,
+  (SELECT min(ST_Distance(f.geom::geography, mid.g)) FROM place_features f, mid WHERE f.category='worship') AS worship)
 SELECT b.n AS buildings, b.area AS building_area_m2, b.commercial AS commercial_buildings, r.km AS roads_km, g.area AS green_area_m2,
        d.school, d.health, d.market, d.worship,
        (SELECT json_object_agg(category, n) FROM p) AS pois
@@ -284,7 +284,10 @@ def fetch(hc):
             if cur.fetchone()[0]:
                 cur.execute("SELECT year, buildings, height_m FROM place_yearly ORDER BY year"); yearly = cur.fetchall()
         with con.cursor() as cur:
-            cur.execute(METRICS_SQL, {"lat": lat, "lon": lon, "commercial": list(COMMERCIAL_BUILDINGS), "food": list(FOOD), "road_exclude": list(ROAD_EXCLUDE)})
+            # the nearest_* distances are from the middle of the node's res-8 cell
+            import ground  # noqa: PLC0415 — the app's; refresh.py and verify.py import this file without it
+            mlat, mlon = ground.middle(lat, lon)
+            cur.execute(METRICS_SQL, {"mlat": mlat, "mlon": mlon, "commercial": list(COMMERCIAL_BUILDINGS), "food": list(FOOD), "road_exclude": list(ROAD_EXCLUDE)})
             m = dict(zip([d.name for d in cur.description], cur.fetchone()))
             cur.execute("SELECT run_at, n_features FROM place_runs ORDER BY run_at DESC LIMIT 1"); run_at, n_feat = cur.fetchone()
     area_km2 = math.pi * (radius / 1000) ** 2
@@ -296,7 +299,8 @@ def fetch(hc):
         "poi_food": pois.get("food", 0), "poi_retail": pois.get("retail", 0) + pois.get("market", 0), "poi_education": pois.get("education", 0),
         "poi_health": pois.get("health", 0), "poi_worship": pois.get("worship", 0), "poi_lodging": pois.get("lodging", 0), "poi_services": pois.get("services", 0),
         "roads_km": m["roads_km"], "green_share": (m["green_area_m2"] or 0) / (area_km2 * 1e6),
-        "nearest_school_m": m["school"], "nearest_health_m": m["health"], "nearest_market_m": m["market"], "nearest_worship_m": m["worship"],
+        # to the nearest 100 m, from the cell's middle: the same four numbers wherever in the cell the node stands
+        **{f"nearest_{k}_m": None if m[k] is None else round(m[k], -2) for k in ("school", "health", "market", "worship")},
     }
     sensor = {"sensor_id": "place-point", "source": "openstreetmap", "name": f"Around here, {radius} m",
               "lat": lat, "lon": lon, "indoor": False, "local": False, "kind": "map", "scale": "community", "cadence": f"P{days}D",

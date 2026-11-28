@@ -156,7 +156,7 @@ else:
               else (ts, s, m, v) for ts, s, m, v in _local]
     _hit = _run("only_here", _smoke + _ringrows(_keys), _keys)
     assert _hit and _hit[0]["name"] == "Sensor 2" and _hit[0]["stations"] == 6, _hit
-    assert float(_hit[0]["nearest"]) == 3.8, "and it names how far the nearest neighbour is"
+    assert float(_hit[0]["nearest"]) == 4, "and it names how far the nearest neighbour is, whole km from the cell's middle"
 
     # the ring's own spread is not a gate. On 7 September these six, in clean air with a median of 8.8, were
     # 9.3 ug/m3 apart between p25 and p75 — 4 to 15 km apart across the Bukit is simply what the air does here.
@@ -166,6 +166,15 @@ else:
         "a node at 40 with the whole ring at 30 is not a local source; that is what `everywhere` is for"
 
     assert _run("everywhere", _local + _ringrows(_keys, 45.0), _keys)[0]["stations"] == 6
+    # the text's "{closest}, {nearest} km" is the same wherever in its res-8 cell the node stands, in whole km
+    import h3  # noqa: E402
+    _cell = h3.latlng_to_cell(-8.8271, 115.15709, 8)
+    _c, _v = h3.cell_to_latlng(_cell), h3.cell_to_boundary(_cell)
+    _corners = [(_c[0] + 0.8 * (v[0] - _c[0]), _c[1] + 0.8 * (v[1] - _c[1])) for v in (_v[0], _v[3])]
+    for _rule, _rows in (("everywhere", _local + _ringrows(_keys, 45.0)), ("only_here", _smoke + _ringrows(_keys))):
+        _two = [trustdb.Node(_rows, _who(_keys)).run(RULES[_rule], AT, *p) for p in _corners]
+        assert _two[0] == _two[1] and _two[0], f"{_rule}: two points in one cell, one answer: {_two}"
+        assert float(_two[0][0]["nearest"]) == int(float(_two[0][0]["nearest"])), _two[0]
     assert _run("everywhere", _local + _ringrows(_keys), _keys) == [], "clean air is not an event"
 
     _thin = _run("alone", _local + _ringrows(_keys[:1]), _keys[:1])

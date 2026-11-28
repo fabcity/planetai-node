@@ -45,7 +45,15 @@ assert km < 0.5, f"the forecast point must be this node's, not another village: 
 sensors, readings = A.bmkg(HC(bm), ADM4, LAT, LON)
 assert len(sensors) == 1 and sensors[0]["sensor_id"] == "forecast-bmkg"
 assert sensors[0]["kind"] == "model" and sensors[0]["local"] is False, "a forecast is never a measurement here"
-assert sensors[0]["meta"]["km_from_node"] < 0.5
+assert sensors[0]["meta"]["km_from_node"] == 0, "whole km from the middle of the node's cell"
+# two node points inside one res-8 cell give the same BMKG sensor: its km is from the cell's middle
+import h3  # noqa: E402
+_cell = h3.latlng_to_cell(LAT, LON, 8)
+_c, _v = h3.cell_to_latlng(_cell), h3.cell_to_boundary(_cell)
+CORNERS = [(_c[0] + 0.8 * (v[0] - _c[0]), _c[1] + 0.8 * (v[1] - _c[1])) for v in (_v[0], _v[3])]
+_far = {**bm, "lokasi": {**loc, "lat": loc["lat"] + 0.05, "lon": loc["lon"] + 0.04}}     # a village ~7 km away
+_two = [A.bmkg(HC(_far), ADM4, *p)[0][0] for p in CORNERS]
+assert _two[0] == _two[1] and _two[0]["meta"]["km_from_node"] == int(_two[0]["meta"]["km_from_node"]), _two
 assert sensors[0]["scale"] == "community", "this pack describes an address, not a region"
 
 # ---- the issue time, stored per value. A forecast that has stopped refreshing reads exactly like a current one.
@@ -219,6 +227,10 @@ assert [x["sensor_id"] for x in ms] == ["forecast-marine"]
 assert (ms[0]["lat"], ms[0]["lon"]) == (LAT - .035, LON - .03), "the sea cell the API snapped to is stored"
 assert {m for _t, _s, m, _v in mr} == {"fc_wave_m", "fc_swell_m", "fc_swell_s", "fc_swell_dir", "fc_lead_hours"}
 assert A.marine(Spy(hourly_payload(ms_keys, LAT + 1.0, LON)), [PT]) == ([], []), "a sea cell 110 km off is not this node's sea (COAST_MAX_KM)"
+assert ms[0]["name"] == "Open-Meteo Marine forecast, nearest sea cell", ms[0]["name"]
+_two = [A.marine(Spy(hourly_payload(ms_keys, LAT - .035, LON - .03)), [{**PT, "lat": la, "lon": lo}])[0][0] for la, lo in CORNERS]
+_two = [{**x, "meta": {k: v for k, v in x["meta"].items() if k != "fetched"}} for x in _two]
+assert _two[0] == _two[1] and _two[0]["meta"]["distance_km"] == int(_two[0]["meta"]["distance_km"]), _two
 for src, mets in (("forecast-cams", ("fc_pm25", "fc_uv")), ("forecast-marine", ("fc_wave_m", "fc_swell_m", "fc_swell_s", "fc_swell_dir"))):
     for m in mets + ("fc_lead_hours",):
         c = ch[(src, m)]

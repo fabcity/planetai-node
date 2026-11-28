@@ -156,10 +156,10 @@ def require(*mods: str) -> None:
         raise SystemExit(f"hydro: {', '.join(missing)} not installed. planetai packs install, then planetai restart")
 
 
-def sentence(n: dict) -> str:
-    """The nearest river in one line, as the page and the bot say it."""
+def sentence(n: dict, dp: int = 1) -> str:
+    """The nearest river in one line, as the page and the bot say it. `dp` is the decimals of its km."""
     km, end = n["dist_m"] / 1000, ("the sea" if not n.get("endorheic") else "where it ends inland")
-    return (f"{km:.1f} km to a river carrying {n['dis_av_cms']:g} m³/s on average (order {n['ord_stra']}, "
+    return (f"{km:.{dp}f} km to a river carrying {n['dis_av_cms']:g} m³/s on average (order {n['ord_stra']}, "
             f"{n['upland_skm']:,.0f} km² drains into it), "
             + (f"which reaches {end} there" if n["dist_dn_km"] < 1 else f"{n['dist_dn_km']:,.0f} km from {end}"))
 
@@ -175,8 +175,18 @@ def fetch(hc):                                                                  
         return [], []
     lat, lon, km = aoi()
     t = datetime.fromisoformat(r["fetched_at"])
-    n, b12, b4 = r["nearest"], r["basin"].get("level12") or {}, r["basin"].get("level4") or {}
-    readings = [(t, "hydro-point", "river_m", round(n["dist_m"])),
+    b12, b4 = r["basin"].get("level12") or {}, r["basin"].get("level4") or {}
+    # What is stored is measured from the middle of the node's res-8 cell: the reach nearest that middle, its distance
+    # to the nearest 100 m, and the sentences in whole km. The result file and /hydro keep the fetch's own figures.
+    import ground  # noqa: PLC0415 — the app's; fetch.py and verify.py import this file without it
+    mlat, mlon = ground.middle(lat, lon)
+    near = [dict(f["properties"], dist_m=round(to_line(mlat, mlon, f["geometry"]["coordinates"]), -2))
+            for f in r["rivers"]["features"] if (f.get("geometry") or {}).get("coordinates")]
+    n = min(near, key=lambda p: p["dist_m"], default=None)
+    if n is None:
+        return [], []
+    big = r.get("largest") and next((p for p in near if p.get("hyriv_id") == r["largest"].get("hyriv_id")), None)
+    readings = [(t, "hydro-point", "river_m", n["dist_m"]),
                 (t, "hydro-point", "river_flow_m3s", n["dis_av_cms"]),
                 (t, "hydro-point", "river_order", n["ord_stra"]),
                 (t, "hydro-point", "river_upland_km2", round(n["upland_skm"])),
@@ -186,7 +196,7 @@ def fetch(hc):                                                                  
     if b12:
         readings.append((t, "hydro-point", "basin_up_km2", round(b12["up_area"])))
     meta = {"region": r["region"], "radius_km": km, "release": RELEASE, "attribution": ATTRIBUTION,
-            "sentence": sentence(n), "largest": sentence(r["largest"]) if r.get("largest") else None, "basin12": {k: b12.get(k) for k in ("hybas_id", "pfaf_id", "sub_area", "up_area")},
+            "sentence": sentence(n, 0), "largest": sentence(big, 0) if big else None, "basin12": {k: b12.get(k) for k in ("hybas_id", "pfaf_id", "sub_area", "up_area")},
             "basin4": {k: b4.get(k) for k in ("hybas_id", "pfaf_id", "sub_area", "up_area")},
             "rivers": len(r["rivers"]["features"]), "basins": len(r["basins"]["features"])}
     sensor = {"sensor_id": "hydro-point", "source": "hydro", "name": f"Rivers within {km} km (HydroRIVERS, about 500 m)",

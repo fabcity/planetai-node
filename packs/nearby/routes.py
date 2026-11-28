@@ -46,9 +46,9 @@ def nearby(audit: bool = False):
     shape = q("""
         WITH ring AS (
           SELECT st.mean_1h AS pm,
-                 sqrt(power((st.lat - current_setting('planetai.lat')::float) * 111320, 2)
-                    + power((st.lon - current_setting('planetai.lon')::float) * 111320
-                            * cos(radians(current_setting('planetai.lat')::float)), 2)) / 1000 AS km
+                 sqrt(power((st.lat - current_setting('planetai.clat')::float) * 111320, 2)
+                    + power((st.lon - current_setting('planetai.clon')::float) * 111320
+                            * cos(radians(current_setting('planetai.clat')::float)), 2)) / 1000 AS km
           FROM stats st JOIN sensors sn USING (sensor_id)
           WHERE sn.source = ANY(%s) AND NOT st.local AND NOT st.indoor AND st.kind = 'sensor' AND st.metric = 'pm25'
             AND st.mean_1h IS NOT NULL AND st.silent_minutes < 120 AND st.lat IS NOT NULL),
@@ -62,7 +62,7 @@ def nearby(audit: bool = False):
                (SELECT round(percentile_cont(0.5)  WITHIN GROUP (ORDER BY pm)::numeric, 1) FROM ring) AS median,
                (SELECT round(percentile_cont(0.75) WITHIN GROUP (ORDER BY pm)::numeric, 1) FROM ring) AS p75,
                (SELECT round(max(pm)::numeric, 1) FROM ring)                                      AS highest,
-               (SELECT round(min(km)::numeric, 1) FROM ring)                                      AS nearest_km,
+               (SELECT round(min(km)::numeric) FROM ring)                                         AS nearest_km,
                (SELECT round(pm::numeric, 1) FROM mine)                                           AS mine,
                (SELECT n FROM mine)                                                               AS mine_sensors""", src)
     out = {"ring": ring, **(shape[0] if shape else {}),

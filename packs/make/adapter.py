@@ -182,8 +182,10 @@ def fetch(hc):
     log.info("make: %d active labs within %.0f km of the node, from %s (%d active labs network-wide "
              "publish no coordinates and cannot be placed)", len(found), radius, which, no_coords)
 
+    import ground  # noqa: PLC0415 — the app's, as every adapter is loaded
+    mid = ground.middle(lat, lon)    # who is in the radius is judged from the node's point; distance_km from the middle
     sensors = []
-    for lab, dist in found:
+    for lab, _ in found:
         slug = (lab.get("slug") or "").strip() or f"id{lab.get('id')}"
         caps = lab.get("capabilities") or []
         sensors.append({
@@ -201,7 +203,7 @@ def fetch(hc):
                 "capabilities": caps,
                 "kind_name": lab.get("kind_name"),
                 "city": lab.get("city"), "country_code": lab.get("country_code"),
-                "distance_km": round(dist, 1),
+                "distance_km": round(km(*mid, float(lab["latitude"]), float(lab["longitude"]))),
                 "url": f"https://www.fablabs.io/labs/{slug}",
                 "registry_slug": "economic/community/fablabs-io",
                 "snapshot": which,
@@ -227,11 +229,11 @@ def ask_line(rows: list[dict], locale: str = "en") -> str | None:
     m = best.get("meta") or {}
     caps = [words.get(c, c) for c in (m.get("capabilities") or [])]
     what = ", ".join(caps[:3]) if caps else None
-    # A node inside a fab lab is the deployment this pack most wants, and it rounds to "0.0 km",
+    # A node inside a fab lab is the deployment this pack most wants, and it rounds to "0 km",
     # which reads like a broken number however true it is. Found on pai-clean 2026-09-20: the VM's
-    # Barcelona coordinates are three metres from Makers Zone BCN. `<0.1 km` is a numeral in all
-    # three languages, so saying it needs no fourth phrase in T.
+    # Barcelona coordinates are three metres from Makers Zone BCN. `<1 km` is a numeral in all
+    # three languages, so saying it needs no fourth phrase in T. distance_km is whole km.
     d = m.get("distance_km")
-    near = isinstance(d, (int, float)) and d < 0.05
-    where = f"{best.get('name')}, {'<0.1' if near else d} km"
+    near = isinstance(d, (int, float)) and d < 0.5
+    where = f"{best.get('name')}, {'<1' if near else d} km"
     return f"{where} ({what})" if what else where

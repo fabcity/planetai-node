@@ -154,4 +154,57 @@ assert "3510 features stored, 8 years of Open Buildings recounted." in refresh_s
 assert "3510 features stored, Open Buildings skipped (TimeoutError: )." in refresh_says(stops(TimeoutError())), "an exception with no message"
 assert "3510 features stored, Open Buildings skipped (SystemExit: place: the satellite half needs earthengine-api)." in refresh_says(stops(SystemExit("place: the satellite half needs earthengine-api\n      planetai packs install")))
 print("  refresh: the poll and `planetai run place refresh` both recount, and the command says what it did when Earth Engine stops it")
+
+
+# The four nearest_* figures are measured from the middle of the node's res-8 cell and kept to the nearest 100 m, so two
+# node points inside one cell store the same four numbers. The database is a fake that measures from whatever point
+# the adapter hands METRICS_SQL for the distances; the counts in the circle are of the features stored round the node's point.
+import h3  # noqa: E402
+
+FEATURES = {"school": (-8.8290, 115.1601), "health": (-8.8210, 115.1555), "market": (-8.8301, 115.1520), "worship": (-8.8262, 115.1611)}
+handed = []
+
+
+class PlaceCur:
+    def __init__(self): self.row, self.description = None, None
+    def __enter__(self): return self
+    def __exit__(self, *a): return False
+    def execute(self, sql, params=None):
+        if "place_runs ORDER BY" in sql and "radius_m" in sql:     # a recent run here: no refresh
+            self.row = (datetime.now(timezone.utc), 1000, float(os.environ["NODE_LAT"]), float(os.environ["NODE_LON"]))
+        elif "to_regclass" in sql:
+            self.row = (False,)
+        elif sql is place.METRICS_SQL:
+            handed.append(params)
+            near = {k: place.metres(params["mlat"], params["mlon"], *v) for k, v in FEATURES.items()}
+            cols = ["buildings", "building_area_m2", "commercial_buildings", "roads_km", "green_area_m2", "school", "health", "market", "worship", "pois"]
+            self.description = [types.SimpleNamespace(name=c) for c in cols]
+            self.row = (100, 50000.0, 10, 3.0, 1000.0, near["school"], near["health"], near["market"], near["worship"], {})
+        elif "n_features" in sql:
+            self.row = (datetime(2026, 11, 1, tzinfo=timezone.utc), 1234)
+    def fetchone(self): return self.row
+
+
+class PlaceCon:
+    def __enter__(self): return self
+    def __exit__(self, *a): return False
+    def cursor(self): return PlaceCur()
+    def commit(self): pass
+
+
+place.psycopg = types.SimpleNamespace(connect=lambda url: PlaceCon())
+os.environ["DATABASE_URL"] = "postgresql://nowhere"
+_cell = h3.latlng_to_cell(-8.8271, 115.15709, 8)
+_c, _v = h3.cell_to_latlng(_cell), h3.cell_to_boundary(_cell)
+P1, P2 = [(_c[0] + 0.8 * (v[0] - _c[0]), _c[1] + 0.8 * (v[1] - _c[1])) for v in (_v[0], _v[3])]   # near opposite corners
+got = []
+for pt in (P1, P2):
+    os.environ.update(NODE_LAT=str(pt[0]), NODE_LON=str(pt[1]))
+    _, rows = place.fetch(None)
+    got.append({m: v for _, _, m, v in rows if m.startswith("nearest_")})
+assert set(got[0]) == {"nearest_school_m", "nearest_health_m", "nearest_market_m", "nearest_worship_m"}, got[0]
+assert got[0] == got[1], f"two points in one cell must store the same nearest_* figures: {got}"
+assert all(v % 100 == 0 for v in got[0].values()), f"each kept to the nearest 100 m: {got[0]}"
+assert handed[0] == handed[1], "the query is handed one point for both"
+print("  nearest: the four distances are from the middle of the node's cell, to the nearest 100 m")
 print("place yearly tests pass")
