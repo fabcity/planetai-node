@@ -59,6 +59,8 @@ const PAL = {
 };
 /* the screen is black in both registers (SPEC_place_microgis §4, Tomas 4 Nov 2026); Now's map keeps the page's (groundBase),
    and the sheet's picture on Paper takes the light one while it is taken (placeSheet) */
+/* the blue the water layers share: the rivers, the basins and the supply */
+const WATER = [110, 190, 255];
 const P = () => (PM.sheet && PM.sheet.paper ? PAL.light : PAL.dark);
 
 /* ---------------------------------------------------------------- scales: named rungs of the ladder */
@@ -86,6 +88,9 @@ const LAYERS = [
   /* the grid's plants (sized by MW), substations and cable heads the energy pack read from OSM (GET /energy), and the MW
      made inside each of the node's seven cells: stock, so built (energy-pack design §5.6). Points and cells are token-only. */
   { id: 'energy', cake: 'built', pack: 'energy', src: 'OSM', name: 'Power grid', sub: 'plants, substations and cable heads, OpenStreetMap', on: false, empty: true },
+  /* where the water comes from: the works the supply pack read from OSM and the sources its keeper stated (GET /supply).
+     A stranger is given the works and no typed point, so the layer draws only what it was given. */
+  { id: 'supply', cake: 'built', pack: 'supply', src: 'OSM', name: 'Water supply', sub: 'works, reservoirs, wells and towers, OpenStreetMap', on: false, empty: true },
   /* the species somebody here confirmed in the household's images (SPEC_species §4), token-only: GET /species. GBIF's
      open records are a count per species (the list under this row), never points, so nothing hollow is drawn for them. */
   { id: 'species', cake: 'animals', pack: 'core', src: 'confirmed', name: 'Species', sub: 'confirmed here, at the image’s point', on: true },
@@ -303,6 +308,30 @@ function energyRows() {
   l.src = pl(n.plants, 'plant');
   l.sub = `${pl(n.plants, 'plant')}, ${pl(n.substations, 'substation')} on this grid${km.length ? ` · nearest ${Math.min(...km).toFixed(1)} km` : ''}`;
 }
+/* after GET /supply: works and stated origins with a point are drawn; works a reader was not given points for are token-only */
+function supplyRows() {
+  const S = PM.supply, l = LAYERS.find(x => x.id === 'supply'), W = (S && S.works) || [], O = supplyMarks(S).origins, pts = W.some(w => w.lat != null);
+  l.empty = !pts && !O.length; l.locked = !!W.length && l.empty;
+  l.why = S ? 'set SUPPLY_SOURCES on Set up' : 'planetai run supply fetch';
+  if (W.length) l.src = `${W.length} work${W.length === 1 ? '' : 's'}`;
+}
+/* what the layer draws from an answer: the works with a point, the stated origins with a point (a ring each), and the
+   line from `from` to the first source's origin when both are known. A mark with no point is left out, never guessed. */
+function supplyMarks(S, from) {
+  const src = ((S && S.sources) || []).filter(x => x && x.id), at = o => o && o.lat != null && o.lon != null;
+  const works = ((S && S.works) || []).filter(w => w.lat != null && w.lon != null);
+  const origins = src.filter(x => x.origin && x.origin.how === 'stated' && at(x.origin)).map(x => ({ name: `${x.origin.name} (stated)`, kind: x.kind, lat: x.origin.lat, lon: x.origin.lon }));
+  const f = src[0] && at(src[0].origin) ? src[0].origin : null;
+  return { works, origins, line: from && f ? [from, [f.lon, f.lat]] : null };
+}
+/* where the line starts: the middle of the node's res-8 cell, never the node's own point. A screen with no token is
+   given that middle as D.point; with the token the cell's ring is read; a sheet draws no line. */
+function supplyFrom() {
+  if (PM.sheet) return null;
+  if (!DOORS_TOKEN()) return D.point;
+  const r = D.ngeo && D.ngeo.c8 && D.ngeo.c8.ring; if (!r) return null;
+  const q = loop(r); q.pop(); return [d3.mean(q, x => x[0]), d3.mean(q, x => x[1])];
+}
 /* a cell's label: the MW of the plants in it, and the house's roof on its own cell when the admin token shows it */
 const cellMW = (c, h) => (c.mw == null ? 'MW not tagged' : `${+c.mw.toFixed(1)} MW`) + (c.home && h && h.roof_w != null ? ` · roof ${(h.roof_w / 1000).toFixed(1)} kW` : '');
 /* the credits each layer on the screen owes, the same words on the screen and burned into the PNG */
@@ -316,6 +345,7 @@ function creditList() {
   if (PM.on.wind && PM.wind) c.push('wind: Open-Meteo, CC BY 4.0');
   if ((PM.on.rivers || PM.on.basin) && PM.hydro) c.push('rivers and basins: HydroSHEDS via HydroATLAS, CC BY 4.0');
   if (PM.on.energy && PM.energy) c.push('power grid: © OpenStreetMap contributors, ODbL, via Overpass');
+  if (PM.on.supply && PM.supply && !LAYERS.find(l => l.id === 'supply').empty) c.push('water supply: © OpenStreetMap contributors, ODbL, via Overpass');
   c.push('Natural Earth');
   return c.filter(Boolean);
 }
@@ -338,13 +368,13 @@ function layers() {
   /* the basins under the rivers: outlines, the one the node drains through drawn brighter */
   if (L.basin && PM.hydro && PM.hydro.basins) {
     out.push(new Dk.PathLayer({ id: 'basin', data: PM.hydro.basins.features.flatMap(f => f.geometry.coordinates.map(path => ({ path, f }))),
-      getPath: d => d.path, ...px, pickable: true, getColor: d => A([110, 190, 255], (d.f.properties.here ? 0.9 : 0.35) * a('basin')),
+      getPath: d => d.path, ...px, pickable: true, getColor: d => A(WATER, (d.f.properties.here ? 0.9 : 0.35) * a('basin')),
       getWidth: d => (d.f.properties.here ? 2 : 1) }));
   }
   /* the rivers: wider with each Strahler order, so the river you know by name reads before its tributaries */
   if (L.rivers && PM.hydro && PM.hydro.rivers) {
     out.push(new Dk.PathLayer({ id: 'rivers', data: PM.hydro.rivers.features, getPath: f => f.geometry.coordinates, ...px, pickable: true,
-      autoHighlight: true, highlightColor: [255, 255, 255, 120], getColor: A([110, 190, 255], 0.9 * a('rivers')),
+      autoHighlight: true, highlightColor: [255, 255, 255, 120], getColor: A(WATER, 0.9 * a('rivers')),
       getWidth: f => Math.min(1 + f.properties.ord_stra * 0.8, 6), capRounded: true, jointRounded: true }));
   }
   /* the grid: the seven cells' outlines and MW, then the substations and cable heads hollow, the plants filled when
@@ -359,6 +389,17 @@ function layers() {
       getFillColor: s => s.kind === 'plant' ? A(EN, (s.fossil === false ? .3 : .85) * a('energy')) : A(p.halo, a('energy')) }));
     out.push(new Dk.TextLayer({ characterSet: 'auto', id: 'energy-l', data: P0, getPosition: lngLat, getText: s => s.name, getSize: 11, fontFamily: 'Figtree, sans-serif',
       getColor: A(p.ink, .8 * a('energy')), getTextAnchor: 'start', getPixelOffset: [12, 0], background: true, getBackgroundColor: A(p.halo, .85), backgroundPadding: [3, 1] }));
+  }
+  /* the water supply: the works as marks, named from zoom 11, the stated origins as rings, and the line to the first */
+  if (L.supply && PM.supply) {
+    const M = supplyMarks(PM.supply, supplyFrom());
+    if (M.line) out.push(new Dk.PathLayer({ id: 'supply-line', data: [{ path: M.line }], getPath: d => d.path, ...px, getColor: A(WATER, .6 * a('supply')), getWidth: 1.5, extensions: [dashed], getDashArray: [4, 4] }));
+    out.push(new Dk.ScatterplotLayer({ id: 'supply', data: M.works, getPosition: lngLat, ...px, pickable: true, stroked: true, filled: true, getRadius: 5, getLineWidth: 1.4,
+      getLineColor: A(WATER, a('supply')), getFillColor: A(WATER, .55 * a('supply')) }));
+    out.push(new Dk.ScatterplotLayer({ id: 'supply-origin', data: M.origins, getPosition: lngLat, ...px, pickable: true, stroked: true, filled: false, getRadius: 9, getLineWidth: 2,
+      getLineColor: A(WATER, a('supply')) }));
+    out.push(new Dk.TextLayer({ characterSet: 'auto', id: 'supply-l', data: [...M.origins, ...(z >= 11 ? M.works.filter(w => w.name) : [])], getPosition: lngLat, getText: w => w.name, getSize: 11,
+      fontFamily: 'Figtree, sans-serif', getColor: A(p.ink, .8 * a('supply')), getTextAnchor: 'start', getPixelOffset: [12, 0], background: true, getBackgroundColor: A(p.halo, .85), backgroundPadding: [3, 1] }));
   }
   if (L.rings && RINGS && !SH) {
     out.push(new Dk.PathLayer({ id: 'rings', data: RINGS, getPath: d => d.path, ...px,
@@ -1063,7 +1104,7 @@ const pickOf = h => {
   const o = h && h.object, id = h && h.layer && h.layer.id;
   return !o ? null : (id === 'own' || id === 'public') ? { kind: 'station', s: o } : id === 'models' ? { kind: 'model', ss: o.ss, p: o.p }
     : id === 'labs' ? { kind: 'lab', s: o } : id === 'images' ? { kind: 'image', c: o } : id === 'species' ? { kind: 'image', c: o.c }
-    : id === 'rivers' ? { kind: 'river', p: o.properties } : id === 'basin' ? { kind: 'basin', p: o.f.properties }
+    : (id === 'supply' || id === 'supply-origin') ? { kind: 'water', w: o} : id === 'rivers' ? { kind: 'river', p: o.properties } : id === 'basin' ? { kind: 'basin', p: o.f.properties }
     : (id === 'grid' || id === 'grid-dot' || id === 'mine' || id === 'radio') ? { kind: 'cell', id: o.id } : id === 'seven' ? { kind: 'cell', id: o.cell } : null;
 };
 function select(id) {
@@ -1374,6 +1415,10 @@ async function facts() {
         + row('in the seven cells', c.outside ? 'no · outside' : 'yes');
       put(head);
       put(head + row('from this node', fmtM(await fromNode(c.at[1], c.at[0]))) + hint('kept on this node, cleaned of EXIF and GPS'));
+    } else if (o && o.kind === 'water') {
+      const w = o.w;
+      put(`<span class="k">Water supply · ${esc(w.kind)}</span><b class="said">${esc(w.name || 'not named')}</b>` + (w.operator ? row('run by', `<span class="said">${esc(w.operator)}</span>`) : '')
+        + (w.km != null ? row('from the cell’s middle', `${w.km < 1 ? 'within a kilometre' : `${+(+w.km).toFixed(1)} km`}`) : '') + hint('OpenStreetMap, or as stated by the keeper of this node'));
     } else if (o && o.kind === 'river') {
       const p = o.p;
       put(`<span class="k">River · order ${p.ord_stra}</span><b>${fmt(p.dis_av_cms, p.dis_av_cms < 1 ? 2 : 1)} m³/s on average</b>`
@@ -1565,7 +1610,7 @@ const imgBlob = id => doorsFetch(`/captures/${id}/file`).then(r => (r.ok ? r.blo
 let POP = null;
 function popup(o) {
   if (POP) { POP.remove(); POP = null; }
-  if (!o || o.kind === 'cell' || o.kind === 'river' || o.kind === 'basin') return;   // a line or an outline: the inspector says it
+  if (!o || o.kind === 'cell' || o.kind === 'river' || o.kind === 'basin' || o.kind === 'water') return;   // a line or an outline: the inspector says it
   let at, h;
   if (o.kind === 'station') {
     const s = o.s, v = lastRaw(s.sensor_id, 'pm25');
@@ -1639,6 +1684,7 @@ async function placeMap() {
   await loadCells();
   if (typeof notHouse === 'function' && notHouse((D.health || {}).kind)) PM.wall = await ask('wall').catch(() => null);   /* the territory: territoryCells */
   PM.energy = await ask('energy').catch(() => null); energyRows();
+  PM.supply = await ask('supply').catch(() => null); supplyRows();
   const nodePlan = await ask('place/geojson').then(g => (g.features || []).length ? g : null).catch(() => null);
   PM.land = { type: 'FeatureCollection', features: [] }; PM.plan = nodePlan;
   if (!nodePlan && !PM.ground.vector && PM.meta) LAYERS.find(l => l.id === 'street').sub = 'the node sent no plan and holds no street map: planetai run place basemap';
@@ -1719,6 +1765,15 @@ async function placeMap() {
 }
 window.placeMap = placeMap; window.placeLayer = setLayer; window.placeSheet = placeSheet; window.placeCake = placeCake; window.placeNoMap = NOMAP; window.__PM = PM;   // __PM for the rig
 /* the figures' Rivers row: both hydro rows on, and out to District scale, where the nearest river is in view */
+/* the figures' Water supply row: the layer on, and the map out to where the first stated origin is in frame (the cell, when
+   none has a point) */
+window.placeSupply = () => {
+  setLayer('supply', true); if (!PM.map) return;
+  const M = supplyMarks(PM.supply, null), at = M.origins[0] || M.works[0];
+  if (!at) { fly(8); return; }
+  const f = supplyFrom() || D.point, b = [[Math.min(f[0], at.lon), Math.min(f[1], at.lat)], [Math.max(f[0], at.lon), Math.max(f[1], at.lat)]];
+  PM.map.fitBounds(b, { padding: 60, maxZoom: 13, duration: CLOCK.reduced() ? 0 : 700 });
+};
 window.placeRivers = () => { setLayer('rivers', true); setLayer('basin', true); if (PM.map) fly(6); };
 /* the Images panel added one: ask again, so its kind's row and its square appear */
 window.placeImagesChanged = async () => { if (!PM.map && !PM.flat) return; [PM.caps, PM.species] = await Promise.all([ask('captures?limit=500').catch(() => null), ask('species').catch(() => null)]); imageRows(); panel(); redraw(); };

@@ -156,6 +156,7 @@ test_place_report|python3 tests/test_place_report.py
 test_reading|PYTHONPATH=app python3 tests/test_reading.py
 test_place_yearly|PYTHONPATH=app python3 tests/test_place_yearly.py
 test_doors_energy|python3 tests/test_doors_energy.py
+test_doors_supply|python3 tests/test_doors_supply.py
 test_mobile_sections|PYTHONPATH=app python3 tests/test_mobile_sections.py
 test_requires|PYTHONPATH=app python3 tests/test_requires.py
 test_issues_geometry|PACKS_DIR=packs PYTHONPATH=app python3 tests/test_issues_geometry.py
