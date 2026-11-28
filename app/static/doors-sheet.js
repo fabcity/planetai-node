@@ -52,10 +52,11 @@ function sheetHTML(D, c, c8) {
     .filter(Boolean).map(esc).join(' · ');
   const leg = (c.legend || []).map(s => `<h3>${esc(s.name)}</h3>` + s.rows.map(r => `<p><span>${esc(r.name)}</span><small>${esc(r.src)}</small></p>`).join('')).join('');
   const maps = (c.maps || []).map(m => `<p><span>${m.colours.filter(x => /^#[0-9A-Fa-f]{6}$/.test(x)).map(x => `<i style="background:${x}"></i>`).join('')}${esc(m.name)}</span></p>`).join('');
-  const made = `Made on PLANETAI ${h.version || ''}, ${c.date || ''} · ${D.node.name}`;
+  const name = h.place || D.node.name, say = typeof asHouse === 'function' ? asHouse : (x => x);
+  const made = `Made on PLANETAI ${h.version || ''}, ${c.date || ''} · ${name}`;
   return `<article class="sheet" aria-label="The sheet"><div class="sin"><div class="smap">${c.img ? sheetSVG(c) : `<p class="snone">${esc(c.none)}</p>`}</div>`
-    + `<div class="sleg"><h2>${esc(D.node.name)}</h2><p class="k">Place${c.rung ? ` · ${esc(c.rung)}, res ${esc(c.res)}` : ''}</p>`
-    + (c.img ? `<p class="shouse"><span><i></i>This house, drawn as its res-10 cell</span></p>` : '') + leg + (maps ? `<h3>your maps</h3>${maps}` : '')
+    + `<div class="sleg"><h2>${esc(name)}</h2><p class="k">Place${c.rung ? ` · ${esc(c.rung)}, res ${esc(c.res)}` : ''}</p>`
+    + (c.img && c.home !== false ? `<p class="shouse"><span><i></i>${esc(say('This house, drawn as its res-10 cell'))}</span></p>` : '') + leg + (maps ? `<h3>your maps</h3>${maps}` : '')
     + `<div class="sfoot"><p class="mono">${where}</p><p>${[...(c.credits || []), made].map(esc).join(' · ')}</p></div></div></div></article>`;
 }
 
@@ -90,6 +91,35 @@ function readingPages(D, R) {
     cut < AV.length && title.replace('</h3>', ', continued</h3>') + AV.slice(cut).map((a, i) => av(a, cut + i)).join('') + cannot].filter(Boolean);
 }
 
+/* WHAT IS COMING (GET /forecast `days`, the rows the Now door's forecast draws): one row a day for the air, the heat,
+   the rain and the sea, each against its line where the forecast has one, and under the table what the lines mean.
+   A forecast is a model's, said so in the head; with no days there is no page. `tz` words the day in the node's zone. */
+const WDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const fcDay = iso => { const [y, m, d] = String(iso).split('-').map(Number); return `${WDAYS[new Date(Date.UTC(y, m - 1, d)).getUTCDay()]} ${d} ${MONTHS[m - 1].slice(0, 3)}`; };
+function forecastPage(F) {
+  const days = ((F && F.days) || []).filter(d => d && d.rows && Object.keys(d.rows).length);
+  if (!days.length) return null;
+  const n = v => (v == null ? null : Number(v)), over = (r, txt) => (r && r.hours_over ? `<small>${esc(txt(r))}</small>` : '');
+  const cell = (v, unit, extra) => (v == null ? '<span class="fine">not held</span>' : `<b>${esc(v)}</b> ${esc(unit)}${extra || ''}`);
+  const rows = days.map(d => { const a = d.rows.air, h = d.rows.heat, w = d.rows.wind_rain, s = d.rows.sea;
+    return `<tr><td>${esc(fcDay(d.date))}${d.part === 'rest' ? '<small>the rest of today</small>' : ''}</td>`
+      + `<td>${cell(a && n(a.peak != null ? a.peak : a.value), 'µg/m³', over(a, r => `${r.hours_over} h over ${r.line}`))}</td>`
+      + `<td>${cell(h && n(h.value), '°C', over(h, r => `${r.hours_over} h over ${r.line}`))}</td>`
+      + `<td>${cell(w && n(w.rain_mm), 'mm', w && w.rain_hours ? `<small>${esc(w.rain_hours)}</small>` : '')}</td>`
+      + `<td>${cell(s && n(s.value), 'm')}</td></tr>`; }).join('');
+  const A = days.map(d => d.rows.air).find(Boolean), H = days.map(d => d.rows.heat).find(Boolean);
+  const air = days.filter(d => d.rows.air && d.rows.air.hours_over).length, hot = days.filter(d => d.rows.heat && d.rows.heat.hours_over).length;
+  const many = (k, of) => (k === 0 ? 'no day' : k === of ? (of === 1 ? 'that day' : 'every day') : `${k} of ${of} days`);
+  const notes = [
+    A && A.line != null && `Fine dust: the highest hour of each day. The line is ${A.line} µg/m³, the WHO guideline for a day's mean. The forecast puts hours over it on ${many(air, days.filter(d => d.rows.air).length)}.`,
+    H && H.line != null && `Heat: the hottest hour as it feels, with humidity counted. ${H.line} °C is the heat line this node is set to. The forecast puts hours over it on ${many(hot, days.filter(d => d.rows.heat).length)}.`,
+    days.some(d => d.rows.wind_rain) && 'Rain: the day\'s total and the hours it is expected in.',
+    days.some(d => d.rows.sea) && 'Sea: the highest waves of the day at the sea point the forecast reads.',
+  ].filter(Boolean).map(t => `<p>${esc(t)}</p>`).join('');
+  return `<h3 class="pmh">what is coming</h3><p class="rwho">A forecast from weather and air models for this place, not a measurement. It changes with every run.</p>`
+    + `<table class="tbl rfc"><tr><th>day</th><th>fine dust</th><th>heat, as felt</th><th>rain</th><th>sea</th></tr>${rows}</table><div class="rfcn">${notes}</div>`;
+}
+
 /* THE REPORT'S PAGES (SPEC_place_report §5), A4 portrait after the sheet: the reading and its avenues (§11), then the place in figures, what the node holds about
    its place, what changed (none without satellite years) and the sources with how to cite. Each has the head line, and
    N counts the pages there. The rows come as the band, the years and the cake make them (doors-place.js reportParts). */
@@ -97,8 +127,10 @@ function reportPages(D, r) {
   const h = D.health || {}, row = (...c) => `<tr>${c.map(x => `<td>${x}</td>`).join('')}</tr>`, credits = [...new Set(r.credits)], read = readingPages(D, r.reading);
   const cake = r.cake.map(s => `<tr><th colspan="4">${esc(s.name)}</th></tr>` + (s.rows.length
     ? s.rows.map(x => row(esc(x.name), esc(x.src), x.held, x.fill ? `<code>${esc(x.fill)}</code>` : esc(x.none || ''))).join('') : row('<span class="fine">none yet</span>', '', '', ''))).join('');
+  const name = h.place || D.node.name;
   const pages = [
     ...read,
+    forecastPage(r.forecast),
     r.figures + (r.index ? `<p class="fine">${esc(r.index.name)} has its own report on the Fab City Index, which says the rest about the city: `
       + `<a href="${esc(r.index.url)}" target="_blank" rel="noopener">${esc(r.index.url)}</a></p>` : ''),
     `<h3 class="pmh">what the node holds about its place</h3><table class="tbl rcake"><tr><th>layer</th><th>source</th><th>held</th><th>to fill it</th></tr>${cake}</table>`,
@@ -106,11 +138,11 @@ function reportPages(D, r) {
     `<h3 class="pmh">sources and how to cite</h3>${credits.map(c => `<p>${esc(c)}</p>`).join('')}`
       + (credits.some(c => /OpenStreetMap/.test(c)) ? '<p>A map made from OpenStreetMap is a Produced Work under the ODbL, so it carries the credit and nothing more.</p>' : '')
       + (read.length ? '<p>The avenues follow the Fab City Full Stack: fab.city.</p>' : '')
-      + `<h3 class="pmh">to cite this report</h3><p class="mono">${esc(`${D.node.name}, Place report, cell ${(h.cell || {}).id}, PLANETAI ${h.version}, made ${r.date}.`)}</p>`,
+      + `<h3 class="pmh">to cite this report</h3><p class="mono">${esc(`${name}, Place report, cell ${(h.cell || {}).id}, PLANETAI ${h.version}, made ${r.date}.`)}</p>`,
   ].filter(Boolean);
-  return pages.map((b, i) => `<article class="rpage" aria-label="Page ${i + 1} of ${pages.length}"><p class="rhead">${esc(`${D.node.name} · Place report · page ${i + 1} of ${pages.length}`)}</p>${b}</article>`).join('');
+  return pages.map((b, i) => `<article class="rpage" aria-label="Page ${i + 1} of ${pages.length}"><p class="rhead">${esc(`${name} · Place report · page ${i + 1} of ${pages.length}`)}</p>${b}</article>`).join('');
 }
 
-const SHEETS = { gridStep, gridLines, sheetLegend, sheetSVG, sheetHTML, reportPages, readingPages, readingBy, readingFoot };
+const SHEETS = { gridStep, gridLines, sheetLegend, sheetSVG, sheetHTML, reportPages, readingPages, forecastPage, readingBy, readingFoot };
 if (typeof window !== 'undefined') Object.assign(window, SHEETS);
 if (typeof module !== 'undefined') module.exports = SHEETS;

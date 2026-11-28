@@ -214,6 +214,10 @@ document.addEventListener('click', e => { if ($('#ptools').hidden === false && !
    the register changes, with the map shown for it (doors-placemap.js placeSheet). A redraw that is not a new address, a
    resize or the browser laying the page out to print it, keeps the sheet it has. */
 let PREG = 'paper', PSHEET = null, PTAKING = null, PPARTS = null, PPOLL = null;
+/* The page does not ask the node for what a screen with no token is always refused (doors-load.js DOORS_LOCKED), and the
+   reading is on that list for a house. A community node answers it to anyone, so there the page asks. */
+const notAHouse = () => typeof notHouse === 'function' && notHouse((D.health || {}).kind);
+const readingFetch = () => (notAHouse() ? fetch('/place/reading', { headers: DOORS_AUTH() }) : doorsFetch('/place/reading'));
 function report(again) {
   const box = $('#preport'), show = v => { box.hidden = !v; document.body.classList.toggle('preport', v); };
   if (location.hash !== '#place/report') { PSHEET = null; show(false); return null; }
@@ -223,11 +227,11 @@ function report(again) {
   if (PSHEET && !again) { show(true); return null; }
   show(false);
   const get = p => doorsFetch(p).then(r => (r.ok ? r.json() : null)).catch(() => null), reg = PREG;
-  return (PTAKING = Promise.all([window.placeSheet(reg === 'paper'), get('/geo/cell?id=' + D.health.cell.id), get('/hydro'), get('/place/reading')]).then(([s, c8, H, RD]) => {
+  return (PTAKING = Promise.all([window.placeSheet(reg === 'paper'), get('/geo/cell?id=' + D.health.cell.id), get('/hydro'), readingFetch().then(r => (r.ok ? r.json() : null)).catch(() => null), get('/forecast')]).then(([s, c8, H, RD, FC]) => {
     PTAKING = null;
     if (location.hash !== '#place/report') return;
     if (reg !== PREG) return report(true);   // the other register was pressed while this one was taken
-    PSHEET = s; PPARTS = { c8, H }; pages(RD);
+    PSHEET = s; PPARTS = { c8, H, FC }; pages(RD);
     box.querySelectorAll('[data-reg]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.reg === PREG)));
     show(true); window.scrollTo(0, 0);
   }).catch(e => { PTAKING = null; $('#psheets').innerHTML = `<p class="fine">The picture was not taken: ${esc(e.message)}</p>`; show(true); }));
@@ -238,26 +242,26 @@ function report(again) {
    its own time, and the page asks again every ten seconds until the text is written or refused. */
 function pages(RD) {
   footWho(RD);
-  $('#psheets').innerHTML = sheetHTML(D, PSHEET, PPARTS.c8 && PPARTS.c8.ring) + reportPages(D, reportParts(PSHEET, PPARTS.H, RD));
+  $('#psheets').innerHTML = sheetHTML(D, PSHEET, PPARTS.c8 && PPARTS.c8.ring) + reportPages(D, reportParts(PSHEET, PPARTS.H, RD, PPARTS.FC));
   const b = $('#prwrite'), n = $('#prnote'), busy = !!RD && RD.state === 'writing';
   b.hidden = !(RD && RD.can_write); b.disabled = busy;
   b.textContent = busy ? 'Writing, a few minutes' : RD && RD.written ? 'Write it again' : 'Write a fuller reading';
   n.hidden = !(RD && RD.state === 'refused'); n.textContent = n.hidden ? '' : `The fuller reading was not kept: ${RD.refused}. The node’s own reading stands.`;
   clearTimeout(PPOLL);
-  if (busy) PPOLL = setTimeout(() => doorsFetch('/place/reading').then(r => (r.ok ? r.json() : null)).catch(() => null)
+  if (busy) PPOLL = setTimeout(() => readingFetch().then(r => (r.ok ? r.json() : null)).catch(() => null)
     .then(R2 => { if (location.hash === '#place/report' && PSHEET) pages(R2 || RD); }), 10000);
 }
-$('#prwrite').onclick = () => doorsFetch('/place/reading', { method: 'POST' }).then(r => r.ok ? doorsFetch('/place/reading').then(g => g.json()) : r.json().then(e => { throw new Error(e.detail || `the node answered ${r.status}`); }))
+$('#prwrite').onclick = () => doorsFetch('/place/reading', { method: 'POST' }).then(r => r.ok ? readingFetch().then(g => g.json()) : r.json().then(e => { throw new Error(e.detail || `the node answered ${r.status}`); }))
   .then(RD => { if (PSHEET) pages(RD); }).catch(e => { const n = $('#prnote'); n.hidden = false; n.textContent = e.message; });
 /* What the pages carry (SPEC_place_report §5; the reading's own credits ride in RD.credits, §11): the band's rows with Rivers in them, the cake, what changed, and every
    credit they owe in the node's words. /earth and /hydro bring their own; the place and index packs' attributions do not
    reach the page, so those two lines are their pack.yaml's, as written there. */
-function reportParts(s, H, RD) {
+function reportParts(s, H, RD, FC) {
   const P = D.index_place, E = D.earth || {}, ch = {}, Y = D.place_yearly || [], read = P && P.place && P.read && P.read.at;
   if ((E.sentinel || []).length || Y.length) layer(ch);
-  return { date: s.date, reading: RD, figures: figures(riversRow(H)), cake: window.placeCake(), change: ch.innerHTML || null,
+  return { date: s.date, reading: RD, forecast: FC, figures: figures(riversRow(H)), cake: window.placeCake(), change: ch.innerHTML || null,
     index: read && P.links && /^https:\/\//.test(P.links.report || '') ? { name: P.place.name || P.chosen, url: P.links.report } : null,
-    credits: [...(s.credits || []), ...((RD && RD.credits) || []), ...((E.sentinel || []).length ? E.credit : []), ...((E.changes || []).length && E.attribution ? [E.attribution] : []),
+    credits: [...(s.credits || []), ...((RD && RD.credits) || []), ...((FC && (FC.days || []).length && FC.attribution) || []), ...((E.sentinel || []).length ? E.credit : []), ...((E.changes || []).length && E.attribution ? [E.attribution] : []),
       ...(Y.length ? ['Google Open Buildings V3 and Temporal v1 (CC BY 4.0) via Earth Engine'] : []), ...(H && H.nearest && H.attribution ? [H.attribution] : []),
       ...(read ? ['Fab City Index, CC BY 4.0, Fab City Foundation'] : [])] };
 }
@@ -270,8 +274,12 @@ document.querySelectorAll('#preportfoot [data-prf]').forEach(b => b.onclick = ()
    token, and written again by the report when a new reading lands */
 let PWHO = false;
 function footWho(RD) { if (RD && RD.rules) $('#prfwho').textContent = readingFoot(RD); }
-function who() { if (PWHO || !DOORS_TOKEN()) return; PWHO = true; doorsFetch('/place/reading').then(r => (r.ok ? r.json() : null)).then(footWho).catch(() => {}); }
-if (!DOORS_TOKEN()) $('#prfhow').textContent = 'Your browser prints it or saves it as a PDF, and nothing is sent anywhere. ' + window.placeNoMap;
+function who() {
+  if (PWHO) return; PWHO = true;
+  /* a house keeps its map and its reading to its own screens; a community node hands both out */
+  if (!DOORS_TOKEN() && !notAHouse()) { $('#prfhow').textContent = 'Your browser prints it or saves it as a PDF, and nothing is sent anywhere. ' + window.placeNoMap; return; }
+  readingFetch().then(r => (r.ok ? r.json() : null)).then(footWho).catch(() => {});
+}
 /* the Ask pane's button (doors-core.js): the report in the register asked for */
 window.placeReport = reg => { PREG = reg === 'screen' ? 'screen' : 'paper'; if (location.hash === '#place/report') report(true); else location.hash = '#place/report'; };
 

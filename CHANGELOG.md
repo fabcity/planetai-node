@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **28 Nov: a community node's Place report opens complete from its public link.** A reader with no token now gets the
+  picture of the place on the first sheet and the reading after it, what kind of place this is and the ways to improve
+  it. A house still keeps both to its own screens. The report has a new page, What is coming: the forecast's days for
+  fine dust, heat, rain and the sea, each against its line, with a sentence on what the line means. The report is
+  titled with `PLACE_NAME`, and `/health` gives it as `place`. The community bot's weekly message now ends with the
+  Place report. A public link needs six more paths, listed in Sharing. A model asked for the fuller reading is now told
+  to keep the public map's limit, and a text that grades the place where its figures do not (dense, unplanned) is refused.
 - **27 Nov: anyone can subscribe to a community node's bot for feeds.** `/start` shows a card to pick feeds (the
   weekly report on Mondays at 07:00, air, heat, waves, fire, rain and floods) and a language, English or Bahasa
   Indonesia. `/feeds`, `/now`, `/week` and `/stop` work from then on; anything else gets one line, and no model

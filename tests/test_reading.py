@@ -235,6 +235,8 @@ check(got is None and "land" in reason and "the node's own sentences" in reason,
 one = sec["land"]["lines"][0]
 check(reading.accept(json.dumps({**GOOD, "sections": {**GOOD["sections"], "land": one + " The rest is the model's own."}}), doc, R)[0] is not None
       and reading.accept(json.dumps(GOOD), doc, R)[0] is not None, "one sentence of the node's in a text of its own is kept")
+check("grades the place ('dense')" in reading.accept(json.dumps({**GOOD, "sections": {**GOOD["sections"], "land": GOOD["sections"]["land"][:600] + " A dense settlement."}}), doc, R)[1],
+      "a grade the findings do not give is refused")
 bare_av = [{**a, "title": "Fill the gap", "why": "Nothing is held in 2 of its 7 cells."} for a in GOOD["avenues"]]
 check(reading.accept(json.dumps({"sections": {i: reading.NOTHING for i, _ in reading.SECTIONS}, "avenues": bare_av}), empty, E)[0] is not None,
       "where the node holds nothing, saying so in its words is not a copy")
@@ -244,6 +246,8 @@ check("Do not give its sentences back" in P and json.dumps(OWN["region"], ensure
 check(all(h in P for _, h in reading.SECTIONS) and all(x in P for x in reading.LAYERS + reading.ACTIONS + reading.SIGNALS) and "name no person" in P.lower()
       and '"green_share"' in P and "60 to 120 words" in P and "in digits" in P, "the prompt carries the frame, the facts, the ban on names and figures in digits")
 check(not NAMES.search(P), "the prompt names nobody")
+check("says what is drawn, not what exists" in P and "Do not grade the place beyond its figures" in P,
+      "the prompt keeps the public map's limit and asks for no grade the figures do not give")
 print("  reading: a model's text is kept only with the frame's ids, the node's numbers and no person named")
 
 # ---------------------------------------------------------------- kept on the node, read by the household, written on a button
@@ -338,6 +342,20 @@ for level in ("off", "open"):
 check(c.get("/place/reading").status_code in (401, 403) and c.post("/place/reading").status_code in (401, 403), "a caller with no token reads and writes nothing")
 check(c.get("/place/reading", headers={"Authorization": "Bearer backup-tok"}).status_code == 401, "the backup token is refused here")
 check(c.post("/place/reading", headers=ACT).status_code in (401, 403) and not cur.rows, "the act token reads the reading and may not ask for one")
+# a community node set to share hands the reading to anyone, and still lets nobody without the admin token ask a model
+import placewords as _pw  # noqa: E402
+_kind, _lvl = os.environ.get("NODE_KIND"), main.SHARE_LEVEL()
+os.environ["NODE_KIND"] = "community"
+main._INDOOR.update(at=1.0, ids=set(), names=set())   # the indoor ids are read: the stranger filter answers
+check(c.get("/place/reading").status_code in (401, 403), "a community node that does not share keeps its reading") if _lvl != "open" else None
+main.settings.get, _get = (lambda k, d="": "open" if k == "SHARE_LEVEL" else _get(k, d)), main.settings.get
+pub = c.get("/place/reading")
+check(pub.status_code == 200 and pub.json().get("rules") and pub.json().get("can_write") is False, "a community node set to share answers its reading to a reader with no token")
+check(c.post("/place/reading").status_code in (401, 403), "and a reader with no token still may not ask for a fuller one")
+os.environ["NODE_KIND"] = "home"
+check(c.get("/place/reading").status_code in (401, 403), "a house set to share keeps its reading")
+main.settings.get = _get
+os.environ.pop("NODE_KIND") if _kind is None else os.environ.__setitem__("NODE_KIND", _kind)
 g = c.get("/place/reading", headers=ACT)
 b = g.json() if g.status_code == 200 else {}
 check(g.status_code == 200 and b.get("state") == "none" and b.get("written") is None and b.get("by") == "node" and b.get("can_write") is False
@@ -475,8 +493,9 @@ check(ft.get("ruled") == "Reading written 17 November 2026 by this node"
 place_js = open("app/static/doors-place.js").read()
 foot_html = html[html.index('id="preportfoot"'):html.index('id="preport"')]
 check("A plan of the map as you have it on screen. A reading of the place, with ways to improve it." in foot_html, "the foot says the report reads the place")
-check(re.search(r"function pages\(RD\) \{[^}]*footWho\(RD\)", place_js, re.S) and "if (PWHO || !DOORS_TOKEN()) return" in place_js
-      and not NAMES.search(foot_html), "the line is asked for once, on a screen holding the token, and a new reading rewrites it")
+check(re.search(r"function pages\(RD\) \{[^}]*footWho\(RD\)", place_js, re.S) and "if (PWHO) return; PWHO = true;" in place_js
+      and "if (!DOORS_TOKEN() && !notAHouse()) {" in place_js
+      and not NAMES.search(foot_html), "the line is asked for once, by a screen holding the token or any screen of a community node, and a new reading rewrites it")
 print("  reading: the foot of Place says who wrote the reading and when")
 
 # ---------------------------------------------------------------- what describes the report names nobody either

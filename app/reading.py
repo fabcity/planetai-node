@@ -21,7 +21,7 @@ import re
 import threading
 from datetime import date, datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends, Header, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException, Request
 
 import cells
 
@@ -401,6 +401,8 @@ COUNTS = frozenset(range(1, 8))                                    # "2 of its 7
 MEASURE = re.compile(r"\s*(?:%|°|º|percent\b|per cent\b|km|ha\b|m\b|m²|µg|kWh?\b|MW\b|mm\b|cm\b|degrees?\b|times\b|fold\b)", re.I)
 # a quantity in words is a number the check cannot read: the model is asked for digits, and these are refused
 QUANTITY = re.compile(r"\b(?:half|halves|thirds?|quarters?|fifths?|tenths?|twice|thrice|doubl\w+|tripl\w+|dozens?|hundreds?|thousands?|millions?)\b", re.I)
+# a grade the figures do not give: with 8% built a model wrote "dense settlement", and "not drawn" became "unplanned" (node #1, 28 Nov 2026)
+GRADE = re.compile(r"\b(?:dense(?:ly)?|sparse(?:ly)?|heavily|vast(?:ly)?|unplanned|unmet)\b", re.I)
 # A report page is one A4 sheet and does not grow in print, so each part of a model's text has a ceiling, in characters
 # (measured in print: five sections of 800 keep the first page whole, five of 900 overrun it)
 LONGEST = {"section": 780, "title": 100, "why": 300, "first_step": 220}
@@ -424,6 +426,10 @@ def prompt(doc: dict, ruled: dict) -> str:
         "Work nothing out from the figures: no sum, no difference, no remainder of a share.\n"
         "A count or a share that comes from the public map covers one kilometre round the place, never 'this cell'. "
         "A cell of the Fab City Index is one entry in a city's table of scores, not a piece of land.\n"
+        # node #1, 28 Nov 2026: with 8% built it wrote "dense settlement", and "nothing drawn" became "needs unmet"
+        "A finding that ends 'as far as the public map goes' says what is drawn, not what exists: keep that limit when you use it, "
+        "and never say a need is unmet or a thing is missing because the map does not draw it. "
+        "Do not grade the place beyond its figures: never 'dense', 'sparse', 'heavily', 'vast', 'unplanned' or 'unmet'. What the map does not draw is 'not drawn', never 'unplanned'.\n"
         "Claim nothing the findings do not support, and give no cause they do not give. Where the manner asks about something "
         "the node holds no figure for, say that it is not known here.\n\n"
         "Then give four to six ways to improve the place. You may keep, sharpen or replace the node's own. Each has:\n"
@@ -514,6 +520,10 @@ def accept(answer: str, doc: dict, ruled: dict | None = None) -> tuple[dict | No
     words = QUANTITY.search(text)
     if words:
         return None, f"a quantity in words ('{words.group().lower()}'), which the node cannot check"
+    own = " ".join(line for sx in (ruled or {}).get("sections", ()) for line in sx["lines"]).lower()
+    grade = next((g.group().lower() for g in GRADE.finditer(text) if g.group().lower() not in own), None)
+    if grade:       # the whole list, so the second try does not trade one of them for another (node #1, 28 Nov 2026)
+        return None, f"it grades the place ('{grade}') where the findings do not; none of dense, sparse, heavily, vast, unplanned or unmet may be used"
     stray = stray_numbers(text, doc)
     if stray:
         return None, "numbers the node does not hold: " + ", ".join(dict.fromkeys(stray))
@@ -577,7 +587,17 @@ def facts(cur, held=None, today: date | None = None) -> dict:
 # Reading it takes the admin or the act token; asking a model for the fuller text takes the admin token.
 NO_MODEL = "No model on this house's network can write this. The reading above is the node's own."
 WRITING_MAX = timedelta(minutes=10)     # a `writing` row older than this failed: a restart must not leave the button stuck
-router = APIRouter(dependencies=[Depends(cells._household)])
+def _reader(request: Request, authorization: str = Header("")) -> None:
+    """Who may read the reading: the household, and on a community node set to share (SHARE_LEVEL=open) anyone, since
+    the Place report it opens is what such a node hands out (auth._COMMUNITY_READS). Asking a model stays the keeper's."""
+    import placewords  # noqa: PLC0415
+    from auth import SHARE_LEVEL  # noqa: PLC0415
+    if not placewords.is_house() and SHARE_LEVEL() == "open":
+        return
+    cells._household(request, authorization)
+
+
+router = APIRouter()
 _lock = threading.Lock()
 
 
@@ -640,7 +660,7 @@ def _stale(row) -> bool:
     return row["state"] == "writing" and datetime.now(timezone.utc) - row["ts"] > WRITING_MAX
 
 
-@router.get("/place/reading")
+@router.get("/place/reading", dependencies=[Depends(_reader)])
 def place_reading(authorization: str = Header("")):
     """The node's own reading of its place, the fuller text if a model wrote one that held, and whether this caller
     may ask for one."""
@@ -658,7 +678,7 @@ def place_reading(authorization: str = Header("")):
             "can_write": _bearer_ok(authorization, os.getenv("ADMIN_TOKEN", "").strip()) and pick(_rungs()) is not None}
 
 
-@router.post("/place/reading", status_code=202)
+@router.post("/place/reading", status_code=202, dependencies=[Depends(cells._household)])
 def write_reading(authorization: str = Header("")):
     """Ask a model on the house's network for the fuller text. 202 at once; GET says when it is written or refused."""
     from psycopg.types.json import Jsonb  # noqa: PLC0415

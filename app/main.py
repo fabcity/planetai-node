@@ -69,7 +69,7 @@ MQTT_HOST = os.getenv("MQTT_HOST", "").strip()                 # set by `planeta
 MQTT_USER, MQTT_PASS = os.getenv("MQTT_USER", ""), os.getenv("MQTT_PASS", "")
 def MESH_INDOOR():
     return {x.strip() for x in settings.get("MESH_INDOOR_NODES", "").split(",") if x.strip()}
-from auth import (AGG_TOKEN, PARENT, PARENT_TOKEN, SHARE_LEVEL, ACT_TOKEN, _SHARE_OFF, _SHARE_OPEN, _SHARE, _CHILD_WRITES, _node_tokens, _is_local, _bearer_ok, _pull_ok, _shows_private, _admin)  # noqa: E402,F401 — tokens, the share allowlists and the checks (app/auth.py)
+from auth import (AGG_TOKEN, PARENT, PARENT_TOKEN, SHARE_LEVEL, ACT_TOKEN, _SHARE_OFF, _SHARE_OPEN, _SHARE, _COMMUNITY_READS, _CHILD_WRITES, _node_tokens, _is_local, _bearer_ok, _pull_ok, _shows_private, _admin)  # noqa: E402,F401 — tokens, the share allowlists and the checks (app/auth.py)
 RETICULUM_URL = os.getenv("RETICULUM_URL", "").strip()       # the reticulum bridge, e.g. http://reticulum:4243
 from channels import (TG, MESH_ALERTS, MESH_GATEWAY_NUM, mesh_state, tg_state,  # noqa: E402,F401
                       mesh_send, notify)  # Telegram, the mesh, LXMF (app/channels.py); Home Assistant is packs/home-assistant
@@ -1095,7 +1095,9 @@ async def _share_level(request, call_next):
         return await call_next(request)
     level = SHARE_LEVEL()
     exact, prefixes = _SHARE.get(level, _SHARE_OFF)
-    if request.url.path not in exact and not request.url.path.startswith(prefixes):
+    community_read = (level == "open" and request.method == "GET" and request.url.path in _COMMUNITY_READS
+                      and not placewords.is_house())
+    if not community_read and request.url.path not in exact and not request.url.path.startswith(prefixes):
         from fastapi.responses import JSONResponse
         openable, open_prefixes = _SHARE_OPEN
         # Only offer the setting when changing it would actually answer THIS path. /version, /backups and the rest
@@ -1193,6 +1195,8 @@ def health(request: Request):
             "schema": schema, "uptime_s": int(time.time() - STARTED),
             **_published_position(bool(getattr(request.state, "share_trusted", False))),
             "city": os.getenv("NODE_CITY", ""),
+            # what people call this place (PLACE_NAME), the node's name when it is empty: the Place report's title
+            "place": settings.get("PLACE_NAME", "").strip() or NODE,
             # what the node is for (NODE_KIND, default home): the doors speak as a house or as a place (app/placewords.py)
             "kind": placewords.kind() or "home",
             # Named, never `**state`: state is the timers' scratchpad, and spreading it sent every reader at every

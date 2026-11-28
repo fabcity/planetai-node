@@ -783,7 +783,8 @@ function screenImage() {
 const NOMAP = 'The map of the house stays on this house’s own screens, because where it stands is the household’s. Unlock this screen in Set up › This screen to print it.';
 async function placeSheet(paper) {
   const date = doorsLocal(new Date().toISOString(), D.tz).slice(0, 10);
-  if (!DOORS_TOKEN()) return { none: NOMAP, date };
+  /* a house keeps its map to its own screens; a community node's map is the one its public page already draws */
+  if (!DOORS_TOKEN() && !(typeof notHouse === 'function' && notHouse((D.health || {}).kind))) return { none: NOMAP, date };
   if (!PM.map) return { none: 'This browser gave the map no WebGL, so there is no picture of it to print.', date };
   /* loaded() is false while tiles are still coming, not only before the first load, and 'load' fires once: arriving from
      Place itself (Download, the Tools row, Ask) waited on it for ever. Idle comes after either, and the wait is bounded. */
@@ -798,7 +799,7 @@ async function placeSheet(paper) {
     redraw();
     await new Promise(r => { PM.map.once('idle', r); PM.map.triggerRepaint(); setTimeout(r, 8000); });
     const cv = PM.map.getCanvas(), z = PM.map.getZoom(), mpp = mPerPx(z);
-    return { img: cv.toDataURL('image/png'), w: cv.clientWidth, h: cv.clientHeight, mpp, bar: barLen(mpp), dark: !paper, res: PM.res, date,
+    return { home: !!ring, img: cv.toDataURL('image/png'), w: cv.clientWidth, h: cv.clientHeight, mpp, bar: barLen(mpp), dark: !paper, res: PM.res, date,
       rung: (SCALES.find(([r]) => r === PM.res) || [])[1] || null, credits: creditList(), legend: sheetLegend(LAYERS, { ...PM.on, rings: false, wind: false }, z),
       maps: onScreen().map(m => ({ name: m.name, colours: [...new Set((MARKS[m.id] || []).map(k => k.colour))].map(n => (PM.palette || {})[n]).filter(Boolean) })) };
   } finally {
