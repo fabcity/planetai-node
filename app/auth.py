@@ -82,8 +82,9 @@ _SHARE = {"off": _SHARE_OFF, "open": _SHARE_OPEN}
 # What a community node answers a reader with no token at SHARE_LEVEL=open, and a house never does: GET only, the exact
 # path. /place/reading is the node's own reading of its place, the first pages of the Place report a community node
 # hands out by a public link. Its figures are the node's outdoor sensors on public channels, the packs' and the
-# Index's, with distances in whole km (app/reading.py facts), and asking a model for a fuller text stays the keeper's.
-_COMMUNITY_READS = frozenset({"/place/reading"})
+# Index's, with distances in whole km (app/reading.py facts), and asking a model for a fuller text stays the keeper's. /supply is where the node's water comes from: a community
+# node shows the points of mapped water works and whole-km distances, never a point its keeper typed (packs/supply/routes.py).
+_COMMUNITY_READS = frozenset({"/place/reading", "/supply"})
 
 
 def _node_tokens() -> list[str]:

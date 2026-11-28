@@ -44,7 +44,7 @@ The middlewares answer `{"error": "..."}`. A share-level 403 names the level and
 
 For a path no level opens it ends "No share level opens this one, so it always needs a token from anywhere but the node itself." `/mcp` without the admin token is 401 `{"error": "the agent surface needs Authorization: Bearer <ADMIN_TOKEN>"}`.
 
-Some routes are a pack's, served from `packs/<id>/routes.py`: `/forecast` (forecast), `/nearby` (nearby), `/index/place` (index), `/energy` (energy), `/predict` (predict), `/earth`, `/earth/change.png`, `/earth/year.png` and `/earth/wall.png` (earth), `/earth/frame.png` (earth-engine), `/hydro` (hydro), `/calibrate` (calibrate), every `/captures` route and `/species` (eyes), and `/things` and `/offers` (things). While its pack is off on the node, such a route answers 404 `{"detail": "the <pack> pack is off on this node"}`.
+Some routes are a pack's, served from `packs/<id>/routes.py`: `/forecast` (forecast), `/nearby` (nearby), `/index/place` (index), `/energy` (energy), `/predict` (predict), `/earth`, `/earth/change.png`, `/earth/year.png` and `/earth/wall.png` (earth), `/earth/frame.png` (earth-engine), `/hydro` (hydro), `/supply` (supply), `/calibrate` (calibrate), every `/captures` route and `/species` (eyes), and `/things` and `/offers` (things). While its pack is off on the node, such a route answers 404 `{"detail": "the <pack> pack is off on this node"}`.
 
 Handlers answer `{"detail": "..."}`. The token checks:
 
@@ -379,6 +379,13 @@ This node's own ambient series, forecast by the model the `predict` pack runs in
 Access: open
 
 The synchronous grid behind this node's cells, as the `energy` pack last computed it: `{grid, kind, method, months, share: {low, high, value, now, stale, as_of}, bar, sources, today: {sun_kwh_m2, roof_kwh, use_kwh, measured, panel_kw}, household, attribution, counts: {plants, substations}, cells}`. `sources` lists the nearest substation, each plant of at least 1 MW and each link, on this grid only. Without the admin or act token (and for `X-Agent`) each source's `km` is whole kilometres from the middle of the node's res-8 cell, as `/wall` measures it, the substation is the one nearest that middle (none while the pack's result was computed for another res-8 cell, until its next poll), the sources are ranked by their distance from it before it is made whole, a source with no point has no `km`, sources carry no `lat`/`lon`, and `cells` is null; with it they are as measured and `cells` holds the node's seven res-8 cells with their outlines and the MW made in each. `household`, the house's latest W from Home Assistant, needs `ADMIN_TOKEN` itself. `today.sun_kwh_m2` is null when the forecast pack has no Open-Meteo sun for today, and then there is no roof. 404 while the `energy` pack is off.
+
+### GET /supply
+Access: open (on a house's own WiFi at `SHARE_LEVEL=open`; anyone at that level on a community node)
+
+Where this place's water comes from, as its keeper states it beside the water works on the public map: `{state, sources, works, counts, radius_km, attribution, fetched_at, hint}`. `state` is `none`, `stated` (sources, no works), `mapped` (works, no valid source) or `both`. A source is `{id, name, kind, holds, origin}`, where `origin` is null or `{how, name, km, basin}` and `how` is `stated` for a point the keeper typed or `mapped` for a water work found by its name. An entry that did not parse is `{entry, problem}` and only the keeper sees it. A work is `{kind, name, operator, km}`, nearest first, at most 40. `attribution` holds the map credit when works are kept and `Water supply as stated by the keeper of this node` when a source is stated. `hint` is `not stated: set SUPPLY_SOURCES on Set up` when nothing is stated, else null. Empty until the pack has fetched, never an error. 404 while the `supply` pack is off.
+
+Who gets which points. With the admin or act token, or from this machine, each `km` is measured from the node's own point with one decimal, and every work and origin carries its `lat` and `lon`. Anyone else gets each `km` from the middle of the node's res-8 cell, as `/wall` measures it, in whole kilometres (null while the node has no place). On a community node that reader still gets the `lat` and `lon` of mapped works and mapped origins, never the point of a typed origin, and a typed origin has a `name` only when the keeper gave one. On a house the points of works and origins go to the keeper alone.
 
 ### GET /earth
 Access: open

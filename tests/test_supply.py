@@ -3,10 +3,15 @@
 Run: PYTHONPATH=/tmp/stub:app python3 tests/test_supply.py
 """
 import collections
+import os
 import importlib.util
 import json
 import pathlib
 import sys
+
+# set before the first import of an app module: app/packs.py reads PACKS_DIR when it is imported
+os.environ.update(PACKS_DIR=str(pathlib.Path("packs").resolve()), ADMIN_TOKEN="admin-tok", ACT_TOKEN="act-tok",
+                  NODE_LAT="-8.8161", NODE_LON="115.1635", DATABASE_URL="postgresql://unused/never-connected")
 
 FIX = pathlib.Path("packs/supply/tests/fixtures/overpass-south-bali.json")
 
@@ -191,6 +196,85 @@ W2 = [{"kind": "works", "name": "Água Pura", "lat": 0.0, "lon": 0.0}, {"kind": 
       {"kind": "tank", "name": "agua pura", "lat": 0.1, "lon": 0.1}]
 r = core.resolve({"origin": {"how": "name", "name": "AGUA PURA"}}, W2, 4.0, 4.0)
 check(r["how"] == "mapped" and (r["lat"], r["lon"]) == (5.0, 5.0), "case and accents ignored; nearest match; tanks are not origins")
+
+# ── GET /supply: who gets which points ───────────────────────────────────────
+import logging
+import tempfile
+import time
+
+sys.path = [p for p in sys.path if p != "/tmp/stub"]
+sys.modules.pop("httpx", None)
+logging.disable(logging.WARNING)
+import settings  # noqa: E402
+ROWS = {"PACKS_ENABLED": "", "SHARE_LEVEL": "open"}
+settings._cache = {"at": time.time() + 1e9, "rows": ROWS}
+import db  # noqa: E402
+import main  # noqa: E402
+from fastapi.testclient import TestClient  # noqa: E402
+
+client = TestClient(main.app)
+ADMIN = {"Authorization": "Bearer admin-tok"}
+db.q = main.q = lambda sql, *a: []
+NODE_LAT, TYPED_LAT, TYPED_LON = -8.8161, -8.8302, 115.1711
+
+
+def src(i, name, kind, holds, origin=None, problem=None, entry=""):
+    return {"entry": entry, "id": i, "name": name, "kind": kind, "holds": holds, "origin": origin, "problem": problem}
+
+
+DOC = {"lat": NODE_LAT, "lon": 115.1635, "radius_km": 25, "fetched_at": "2026-11-28T00:00:00+00:00",
+       "stated": [src("pdam", "PDAM", "piped", "fails at times", {"how": "mapped", "name": "IPA Ungasan", "lat": -8.80, "lon": 115.19, "basin": "same"}),
+                  src("truck", "Truck", "truck", "fails often", None),
+                  src("our-well", "Our well", "well", "steady", {"how": "stated", "name": "Our well", "lat": TYPED_LAT, "lon": TYPED_LON, "basin": "same"})],
+       "works": [{"kind": "works", "name": "Zeta", "operator": None, "lat": -8.70, "lon": 115.30},
+                 {"kind": "works", "name": "IPA Ungasan", "operator": "PDAM", "lat": -8.80, "lon": 115.19}],
+       "counts": {"works": 2}, "attribution": ["© OpenStreetMap contributors, ODbL, via Overpass"]}
+with tempfile.TemporaryDirectory() as tmp:
+    os.environ["PACK_OUT"] = tmp
+    os.environ["NODE_LAT"], os.environ["NODE_LON"] = "-8.8161", "115.1635"
+    os.makedirs(tmp + "/supply")
+
+    def patch_result(doc):
+        pathlib.Path(tmp, "supply", "result.json").write_text(json.dumps(doc))
+
+    patch_result(DOC)
+    r = client.get("/supply", headers=ADMIN).json()
+    check(r["state"] == "both" and r["sources"][2]["origin"]["lat"] == TYPED_LAT and isinstance(r["sources"][0]["origin"]["km"], float)
+          and r["radius_km"] == 25, "the keeper sees every point, km from the node")
+    check(r["works"][0]["name"] == "IPA Ungasan" and r["attribution"][-1] == "Water supply as stated by the keeper of this node", "nearest first; both credits")
+
+    _kind = os.environ.get("NODE_KIND")
+    os.environ["NODE_KIND"] = "community"
+    main._INDOOR.update(at=1.0, ids=set(), names=set())
+    resp = client.get("/supply")
+    j = resp.json()
+    check(resp.status_code == 200 and "lat" not in j["sources"][2]["origin"] and j["sources"][2]["origin"]["km"] == round(j["sources"][2]["origin"]["km"]),
+          "a stranger never gets a typed point, and km are whole")
+    check("lat" in j["sources"][0]["origin"] and "lat" in j["works"][0], "a stranger on a community node gets the points of mapped works")
+    check(str(TYPED_LAT) not in resp.text and str(NODE_LAT) not in resp.text, "neither the typed point nor the node's is anywhere in the answer")
+    check("entry" not in resp.text, "no raw entry for a stranger")
+
+    os.environ["NODE_KIND"] = "home"
+    j = client.get("/supply").json()
+    check(all("lat" not in w for w in j["works"]) and all("lat" not in (s.get("origin") or {}) for s in j["sources"]) and j["works"][0]["km"] is not None,
+          "a house's WiFi gets no points")
+    ROWS["SHARE_LEVEL"] = "off"
+    check(TestClient(main.app, client=("10.0.0.9", 5)).get("/supply").status_code in (401, 403), "a house that does not share answers no stranger")
+    ROWS["SHARE_LEVEL"] = "open"
+    os.environ.pop("NODE_KIND") if _kind is None else os.environ.__setitem__("NODE_KIND", _kind)
+
+    patch_result({})
+    j = client.get("/supply", headers=ADMIN).json()
+    check(j["state"] == "none" and j["sources"] == [] and j["hint"].startswith("not stated"), "nothing stated, nothing mapped")
+    patch_result(dict(DOC, stated=[src(None, None, None, None, problem="kind", entry="A | canal | | ")] + DOC["stated"][:1], works=[]))
+    j = client.get("/supply", headers=ADMIN).json()
+    check(j["sources"][0] == {"entry": "A | canal | | ", "problem": "kind"} and j["state"] == "stated" and j["works"] == [], "a bad entry is a row with its problem")
+    patch_result(dict(DOC, stated=[]))
+    check(client.get("/supply", headers=ADMIN).json()["state"] == "mapped", "works only is mapped")
+    patch_result({"stated": "x", "works": [3, None, {"lat": "a"}], "counts": 5})
+    resp = client.get("/supply", headers=ADMIN)
+    check(resp.status_code == 200 and resp.json()["state"] == "none", "a result of an unexpected shape is the none answer")
+
 
 if fails:
     print("FAIL:", *fails, sep="\n  ")
