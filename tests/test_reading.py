@@ -244,6 +244,8 @@ check("Do not give its sentences back" in P and json.dumps(OWN["region"], ensure
 check(all(h in P for _, h in reading.SECTIONS) and all(x in P for x in reading.LAYERS + reading.ACTIONS + reading.SIGNALS) and "name no person" in P.lower()
       and '"green_share"' in P and "60 to 120 words" in P and "in digits" in P, "the prompt carries the frame, the facts, the ban on names and figures in digits")
 check(not NAMES.search(P), "the prompt names nobody")
+check("says what is drawn, not what exists" in P and "Do not grade the place beyond its figures" in P,
+      "the prompt keeps the public map's limit and asks for no grade the figures do not give")
 print("  reading: a model's text is kept only with the frame's ids, the node's numbers and no person named")
 
 # ---------------------------------------------------------------- kept on the node, read by the household, written on a button
