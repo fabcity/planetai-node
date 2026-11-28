@@ -24,9 +24,10 @@ import supply_core as core  # noqa: E402  (a path load, see core.sibling)
 log = logging.getLogger("planetai.pack.supply")
 osm = core.sibling("osm")
 SID = "supply-point"
-USER_AGENT = "planetai-node/supply (https://planetai.fab.city; info@fab.city)"
+USER_AGENT = "planetai-node/supply (+https://planetai.fab.city)"
 ATTRIBUTION = "© OpenStreetMap contributors, ODbL, via Overpass"
 HOLDS_RANK = {"steady": 0, "fails at times": 1, "fails often": 2}
+RETRY_HOURS = 6        # after a failed read, the map is left alone this long
 ALWAYS_KEPT = ("works", "pumping", "reservoir", "dam")
 _state = {"warned": False}
 
@@ -64,7 +65,8 @@ def _works(hc, lat: float, lon: float, km: float, now: datetime) -> tuple[list[d
     saved = None
     try:
         saved = json.loads(cache.read_text())
-        if (saved["lat"], saved["lon"], saved["radius_km"]) != (lat, lon, km) or not isinstance(saved["works"], list):
+        if (saved["radius_km"] != km or _metres(saved["lat"], saved["lon"], lat, lon) > max(km * 10.0, 25.0)
+                or not isinstance(saved["works"], list)):
             saved = None
     except (OSError, ValueError, KeyError, TypeError):
         saved = None
@@ -74,6 +76,12 @@ def _works(hc, lat: float, lon: float, km: float, now: datetime) -> tuple[list[d
                 return saved["works"], saved["fetched_at"]
         except (ValueError, TypeError):
             pass
+    tried = _out() / "tried.json"
+    try:
+        if now - datetime.fromisoformat(json.loads(tried.read_text())["at"]) < timedelta(hours=RETRY_HOURS):
+            return (saved["works"], saved["fetched_at"]) if saved else ([], None)
+    except (OSError, ValueError, KeyError, TypeError):
+        pass
     dlat, dlon = km / 111.32, km / (111.32 * max(math.cos(math.radians(lat)), 0.01))
     q = osm.QUERY.format(s=lat - dlat, w=lon - dlon, n=lat + dlat, e=lon + dlon)
     url = os.getenv("OVERPASS_URL", "https://overpass-api.de/api/interpreter")
@@ -84,16 +92,22 @@ def _works(hc, lat: float, lon: float, km: float, now: datetime) -> tuple[list[d
         works = osm.parse(r.json())
         cache.parent.mkdir(parents=True, exist_ok=True)
         cache.write_text(json.dumps({"fetched_at": now.isoformat(), "lat": lat, "lon": lon, "radius_km": km, "works": works}))
+        tried.unlink(missing_ok=True)
         return works, now.isoformat()
     except Exception as exc:  # noqa: BLE001
         log.warning("supply: overpass read failed: %s", exc)
+        try:
+            tried.parent.mkdir(parents=True, exist_ok=True)
+            tried.write_text(json.dumps({"at": now.isoformat()}))
+        except OSError:
+            pass
         return (saved["works"], saved["fetched_at"]) if saved else ([], None)
 
 
 def _hydro():
     """hydro's own basins and its point-in-polygon, or (None, {}) when that pack is off or has kept nothing."""
     try:
-        import packs  # noqa: PLC0415 — the loader reads PACKS_DIR at import
+        import packs  # noqa: PLC0415  the loader reads PACKS_DIR at import
 
         h = packs.module("hydro", "adapter")
         return h.inside, h.result() or {}

@@ -84,13 +84,23 @@ class StubHC:
 
     def post(self, url, data=None, **kw):
         if self.calls is not None:
-            self.calls.append(url)
+            self.calls.append((url, kw.get("headers")))
         return type("Resp", (), {"raise_for_status": lambda s: None, "json": lambda s: self.doc})()
 
 
 class FailingHC:
+    def __init__(self, calls=None):
+        self.calls = calls
+
     def post(self, url, **kw):
+        if self.calls is not None:
+            self.calls.append(url)
         raise OSError("overpass is down")
+
+
+def age_tried(hours):
+    f = pathlib.Path(os.environ["PACK_OUT"]) / "supply" / "tried.json"
+    f.write_text(json.dumps({"at": (datetime.now(timezone.utc) - timedelta(hours=hours)).isoformat()}))
 
 
 def age_cache(days):
@@ -120,8 +130,22 @@ with tempfile.TemporaryDirectory() as tmp:
     check(o["basin"] is None and R["fetched_at"], "no hydro, no basin")
 
     calls = []; A.fetch(StubHC(FIXDOC, calls)); check(calls == [], "inside the refresh days, no second read")
-    age_cache(31); A.fetch(FailingHC()); check(A.result()["counts"]["works"] == 3, "Overpass down: the last works are kept")
+    check(not any("@" in str(c) for c in calls), "no address in a header")
+    age_cache(31); old = A.result()["fetched_at"]
+    os.environ["SUPPLY_SOURCES"] = "Trucks | truck | | "
+    _, rr = A.fetch(FailingHC()); R3 = A.result()
+    check(R3["counts"]["works"] == 3 and R3["fetched_at"] == json.loads((pathlib.Path(tmp) / "supply/osm.json").read_text())["fetched_at"]
+          and R3["stated"][0]["id"] == "trucks" and R3["fetched_at"] != old and stated_rows(rr) == {"supply_sources": 1},
+          "Overpass down: the last works and their old date are kept, the result is rewritten")
+    fc = []; A.fetch(FailingHC(fc)); check(fc == [], "after a failed read, no new try for 6 hours")
+    age_tried(7); A.fetch(FailingHC(fc)); check(len(fc) == 1, "after 6 hours it tries again")
+    os.environ["SUPPLY_SOURCES"] = "PDAM Tirta Mangutama | piped | fails often | PDAM Tirta Mangutama"
+    uac = []; (pathlib.Path(tmp) / "supply/tried.json").unlink(); A.fetch(StubHC(FIXDOC, uac))
+    check(uac and uac[0][1]["User-Agent"] == "planetai-node/supply (+https://planetai.fab.city)", "the User-Agent, exactly")
 
+    os.environ["NODE_LAT"] = "-8.8201"
+    cc = []; A.fetch(StubHC(FIXDOC, cc)); check(cc == [] , "a node a few metres off keeps its cache")
+    os.environ["NODE_LAT"] = "-8.82"
     os.environ["SUPPLY_SOURCES"] = "Office | piped | | PDAM Badung"; A.fetch(StubHC(FIXDOC))
     check(A.result()["stated"][0]["origin"] is None, "an office named after the utility is not an origin")
     os.environ["SUPPLY_SOURCES"] = "Our well | well | steady | -8.8201, 115.1502"; A.fetch(StubHC(FIXDOC))
@@ -138,6 +162,14 @@ with tempfile.TemporaryDirectory() as tmp:
     del os.environ["NODE_LAT"]
     check(A.fetch(StubHC(FIXDOC)) == ([], []) and A.result() == {}, "no point: nothing, no raise")
 
+with tempfile.TemporaryDirectory() as tmp2:
+    os.environ["PACK_OUT"] = tmp2
+    os.environ["NODE_LAT"] = "-8.82"
+    os.environ["SUPPLY_SOURCES"] = "Trucks | truck | steady | "
+    sn, rn = A.fetch(FailingHC()); Rn = A.result()
+    check(len(sn) == 1 and stated_rows(rn) == {"supply_sources": 1, "supply_first_holds": 0} and Rn["works"] == [] and Rn["fetched_at"] is None
+          and Rn["stated"][0]["id"] == "trucks", "a failed read with no cache: statement kept, no works, no date, rows still back")
+
 SQ = lambda x0, y0: [[x0, y0], [x0 + 1, y0], [x0 + 1, y0 + 1], [x0, y0 + 1], [x0, y0]]
 H = {"basins": {"features": [{"properties": {"here": True}, "geometry": {"type": "Polygon", "coordinates": [SQ(0, 0)]}},
                              {"properties": {}, "geometry": {"type": "MultiPolygon", "coordinates": [[SQ(1, 0)]]}}]}}
@@ -149,6 +181,12 @@ def inside(lon, lat, rings):
 
 check(core.basin_of(0.5, 0.5, H, inside) == "same" and core.basin_of(0.5, 1.5, H, inside) == "other"
       and core.basin_of(5.0, 5.0, H, inside) == "beyond" and core.basin_of(0.5, 0.5, {}, inside) is None, "same, other, beyond, and none without hydro")
+HY = load("hydro_adapter", "packs/hydro/adapter.py")
+sq = lambda x0, y0: [[x0, y0], [x0 + .1, y0], [x0 + .1, y0 + .1], [x0, y0 + .1], [x0, y0]]
+HB = {"basins": {"features": [{"type": "Feature", "properties": {"here": True}, "geometry": {"type": "Polygon", "coordinates": [sq(115.1, -8.9)]}},
+                              {"type": "Feature", "properties": {}, "geometry": {"type": "Polygon", "coordinates": [sq(115.2, -8.9)]}}]}}
+check(core.basin_of(-8.85, 115.15, HB, HY.inside) == "same" and core.basin_of(-8.85, 115.25, HB, HY.inside) == "other"
+      and core.basin_of(-8.0, 114.0, HB, HY.inside) == "beyond", "hydro's own inside on hydro's basins shape")
 W2 = [{"kind": "works", "name": "Água Pura", "lat": 0.0, "lon": 0.0}, {"kind": "works", "name": "agua pura", "lat": 5.0, "lon": 5.0},
       {"kind": "tank", "name": "agua pura", "lat": 0.1, "lon": 0.1}]
 r = core.resolve({"origin": {"how": "name", "name": "AGUA PURA"}}, W2, 4.0, 4.0)
