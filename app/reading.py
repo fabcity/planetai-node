@@ -174,14 +174,20 @@ def shape(latest: dict, hydro: dict | None, energy: dict | None, index: dict | N
         put("air_days_over", air[0]); put("air_days", air[1])
     # The first source the keeper stated that holds up, and the next one. The origin's distance is from the middle of the
     # res-8 cell and whole, as every other distance here: this reading leaves the house, and the node's own point must not.
-    ok = [x for x in _d(supply).get("stated") or () if isinstance(x, dict) and not x.get("problem")]
+    # the keeper's own name for it, as typed; only a trailing full stop and the spaces round it are taken off, so a line never ends ".."
+    ok = [dict(x, name=str(x["name"]).strip().rstrip(".").strip()) for x in _d(supply).get("stated") or ()
+          if isinstance(x, dict) and not x.get("problem") and x.get("name") is not None]
+    ok = [x for x in ok if x["name"]]
     if ok:
         import wall  # noqa: PLC0415 — only a node that has a stated source needs the database module
         centre = wall.cell_centre()        # None before the node has a place: then the km is not held
         first, org = ok[0], _d(ok[0].get("origin"))
         put("supply_first", first.get("name")); put("supply_kind", first.get("kind")); put("supply_holds", first.get("holds"))
-        if org.get("lat") is not None and org.get("lon") is not None and centre:
-            put("supply_origin_km", wall.dist_km(centre, float(org["lon"]), float(org["lat"])))
+        try:
+            if org.get("lat") is not None and org.get("lon") is not None and centre:
+                put("supply_origin_km", wall.dist_km(centre, float(org["lon"]), float(org["lat"])))
+        except (TypeError, ValueError):       # a malformed origin holds no km
+            pass
         put("supply_basin", org.get("basin"))
         if len(ok) > 1:
             put("supply_second", ok[1].get("kind"))
@@ -340,14 +346,14 @@ def rules(doc: dict) -> dict:
                  "spring": f"The water here comes from a spring ({first})."}.get(k)
         if k == "piped":
             basin = {"same": ", in the same basin", "other": ", in another basin", "beyond": ", outside the basins this node holds"}.get(v("supply_basin"), "")
-            water = (f"The water here is piped by {first}" + (f", from works about {t('supply_origin_km')} km away" if has("supply_origin_km") else "") + basin + ".")
+            water = (f"The water here is piped by {first}" + (f", from works {near('supply_origin_km')}" if has("supply_origin_km") else "") + basin + ".")
         if water:
             lines["needs"].append(water)
         if v("supply_holds") in ("fails at times", "fails often"):
-            fill = {"truck": "trucks", "well": "a well", "spring": "a spring", "bottled": "bottled water", "rain": "rain"}.get(v("supply_second"))
+            fill = None if v("supply_second") == k else {"truck": "trucks", "well": "a well", "spring": "a spring", "bottled": "bottled water", "rain": "rain"}.get(v("supply_second"))
             gap = f"It {v('supply_holds')}" + (f", and {fill} fill{'' if fill == 'trucks' else 's'} the gap" if fill else "") + "."
             lines["needs"].append(gap)
-            avenue(tuple(k for k in SUPPLY if has(k)), "Count the days the tap is dry", f"{water or ''} {gap}".strip(),
+            avenue(("supply_first", "supply_kind", "supply_holds"), "Count the days the tap is dry", f"{water or ''} {gap}".strip(),
                    "Keep a tally on one street for a month: each dry day, each truck bought and what it paid.", "Infrastructure", "Map and research", "asset")
     if has("lab_km", "labs_near", "labs_radius_km"):
         lines["needs"].append(f"What breaks here can be mended {near('lab_km')}.")

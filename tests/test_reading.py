@@ -256,7 +256,8 @@ import os as _os  # noqa: E402
 _os.environ.setdefault("DATABASE_URL", "postgresql://unused/never-connected")
 import wall  # noqa: E402
 
-NODE_LAT, NODE_LON = -8.81608263, 115.16354382
+_COS = 0.98818                      # cos of the latitude, for a degree of longitude in km (111.195 km a degree on the meridian)
+NODE_LAT, NODE_LON = -8.81608263, 115.16354382 - 0.35 / (111.195 * _COS)     # 350 m west of the cell's middle: the node's point is not the middle
 _os.environ["NODE_LAT"], _os.environ["NODE_LON"] = str(NODE_LAT), str(NODE_LON)     # the home cell wall.cell_centre() takes its middle from
 
 
@@ -275,7 +276,8 @@ S = {"stated": [{"id": "pdam", "name": "PDAM Tirta Mangutama", "kind": "piped", 
 d = shape_with(supply=S)
 L = reading.rules(d)["sections"]
 needs = next(sx for sx in L if sx["id"] == "needs")["lines"]
-check(any(l.startswith("The water here is piped by PDAM Tirta Mangutama, from works about ") and l.endswith(" km away, in the same basin.") for l in needs), "the piped line, with km and basin")
+KM_PDAM = wall_km_from_cell_middle(-8.799, 115.160)
+check(f"The water here is piped by PDAM Tirta Mangutama, from works about {KM_PDAM} km away, in the same basin." in needs, f"the piped line, with its km from the cell's middle ({KM_PDAM}) and basin: {needs}")
 check("It fails often, and trucks fill the gap." in needs, "the failing line")
 check(any(a["title"] == "Count the days the tap is dry" and a["layer"] == "Infrastructure" for a in reading.rules(d)["avenues"]), "the tally is proposed")
 check(not any("where the water comes from" == b["what"] for b in reading.rules(d)["blind"]), "stated: not among what the reading cannot see")
@@ -286,15 +288,44 @@ check(not any(l.startswith("The water here") for sx in r0["sections"] for l in s
     b["what"] == "where the water comes from" and b["command"] == "planetai config set SUPPLY_SOURCES" for b in r0["blind"]), "not stated: no line, and it is listed as unseen")
 steady = shape_with(supply={"stated": [dict(S["stated"][0], holds="steady")]})
 check(not any(a["title"] == "Count the days the tap is dry" for a in reading.rules(steady)["avenues"]), "a steady supply proposes no tally")
-bad = shape_with(supply={"stated": [dict(S["stated"][0], problem="no such kind"), S["stated"][1]]})
-check(bad["facts"]["supply_kind"]["v"] == "truck" and "supply_second" not in json.dumps(bad) or bad["facts"]["supply_second"] is None, "a source with a problem is not the first source")
-typed = shape_with(supply={"stated": [dict(S["stated"][0], origin={"how": "stated", "name": None, "lat": NODE_LAT, "lon": NODE_LON, "basin": "same"})]})
-check(str(NODE_LAT) not in json.dumps(reading.rules(typed)) and str(NODE_LON) not in json.dumps(reading.rules(typed)), "a typed origin puts no point in the reading")
-check(typed["facts"]["supply_origin_km"]["v"] == round(wall_km_from_cell_middle(NODE_LAT, NODE_LON)), "its km is whole, from the middle of the cell")
+bad_src = dict(S["stated"][0], name="Leaky Works Ltd", problem="PROBLEMTEXT")
+bad = shape_with(supply={"stated": [bad_src, S["stated"][1]]})
+check(bad["facts"]["supply_kind"]["v"] == "truck" and bad["facts"]["supply_second"] is None and bad["facts"]["supply_origin_km"] is None and bad["facts"]["supply_holds"] is None,
+      "a source with a problem contributes no fact")
+check(not any(w in json.dumps(reading.rules(bad)) + reading.prompt(bad, reading.rules(bad)) for w in ("Leaky Works", "PROBLEMTEXT")), "neither its name nor its problem is in the reading or the prompt")
+shifted = NODE_LON - 20.2 / (111.195 * _COS)                  # 20.2 km from the node's point, 20.55 km from the cell's middle
+typed = shape_with(supply={"stated": [dict(S["stated"][0], origin={"how": "stated", "name": None, "lat": NODE_LAT, "lon": shifted, "basin": "same"})]})
+mid, pt = wall_km_from_cell_middle(NODE_LAT, shifted), round(wall.dist_km((NODE_LON, NODE_LAT), shifted, NODE_LAT))
+check(mid != pt, f"the test origin tells the cell's middle ({mid}) from the node's point ({pt})")
+check(typed["facts"]["supply_origin_km"]["v"] == mid, f"its km is whole, from the middle of the cell, not from the node's point: {typed['facts']['supply_origin_km']}")
+check(str(NODE_LAT) not in json.dumps(reading.rules(typed)) and str(NODE_LON) not in json.dumps(reading.rules(typed)) and str(shifted)[:8] not in json.dumps(reading.rules(typed)),
+      "a typed origin puts no point in the reading")
+near0 = shape_with(supply={"stated": [dict(S["stated"][0], origin={"how": "stated", "name": None, "lat": NODE_LAT, "lon": NODE_LON, "basin": None})]})
+check(near0["facts"]["supply_origin_km"]["v"] == 0 and "The water here is piped by PDAM Tirta Mangutama, from works within a kilometre." in json.dumps(reading.rules(near0)),
+      "works within a kilometre are said so, never as 0 km")
+junk = shape_with(supply={"stated": [dict(S["stated"][0], origin={"how": "stated", "name": None, "lat": "x", "lon": 115.1, "basin": "same"})]})
+check(junk["facts"]["supply_origin_km"] is None and junk["facts"]["supply_kind"]["v"] == "piped", "a malformed origin holds no km, and raises nothing")
+tidy = shape_with(supply={"stated": [dict(S["stated"][0], name="  PDAM Tirta Mangutama. ")]})
+check(tidy["facts"]["supply_first"]["v"] == "PDAM Tirta Mangutama" and not any(".." in l for sx in reading.rules(tidy)["sections"] for l in sx["lines"]), "the keeper's name is kept as typed, less spaces and a closing full stop")
+check(shape_with(supply={"stated": [dict(S["stated"][0], name=" . ")]})["facts"]["supply_first"] is None, "a name that is empty after that holds no source")
+same = shape_with(supply={"stated": [S["stated"][0], dict(S["stated"][0], id="b", name="Other works")]})
+nl = next(sx for sx in reading.rules(same)["sections"] if sx["id"] == "needs")["lines"]
+check("It fails often." in nl and not any("fill" in l and "gap" in l for l in nl), "a second source of the same kind adds no 'fills the gap'")
+# the tally rests on its name, kind and holds, whatever else is stated, so its place among the six does not move
+TALLY = "Count the days the tap is dry"
+only3 = shape_with(supply={"stated": [{"id": "x", "name": "PDAM", "kind": "piped", "holds": "fails often", "origin": None, "problem": None}]})
+check(any(a["title"] == TALLY for a in reading.rules(only3)["avenues"]), "with only name, kind and holds, the tally is still among the six")
+rank = lambda doc: [a["title"] for a in reading.rules(doc)["avenues"]].index(TALLY)   # noqa: E731
+check(rank(only3) == rank(d), f"its rank does not change when km, basin and a second source are added ({rank(only3)} then {rank(d)})")
 check(any("Water supply as stated by the keeper of this node" in c for c in reading.credits(d, MANIFESTS)) and "Water works as drawn on OpenStreetMap, ODbL" in reading.credits(d, MANIFESTS),
       "the keeper is credited beside the pack's own line")
-GOOD_WITH_SUPPLY = {**GOOD, "sections": {**GOOD["sections"], "needs": "The tap fails often here, and trucks fill the gap, with 34% of the ground green."}}
-check(reading.accept(json.dumps(GOOD_WITH_SUPPLY), d, reading.rules(d))[0] is not None, "a model's text may say 'fails often' when the node's own line does")
+GOOD_WITH_SUPPLY = {**GOOD, "sections": {**GOOD["sections"], "needs": "The tap fails often and trucks fill the gap."}}
+RD = reading.rules(d)
+check(reading.accept(json.dumps(GOOD_WITH_SUPPLY), d, RD)[0] is not None, "a model's text saying the tap fails often is kept when the node's reading holds the supply lines")
+PD = reading.prompt(d, RD)
+check(f"The water here is piped by PDAM Tirta Mangutama, from works about {KM_PDAM} km away, in the same basin." in PD and "It fails often, and trucks fill the gap." in PD
+      and not any(c in PD for c in ("115.160", "-8.799", str(NODE_LAT)[:8], str(NODE_LON)[:8])),
+      "the prompt hands the model the node's two supply lines and no coordinate")
 print("  reading: where the water comes from is said, with no point and a whole km from the cell's middle, and credited")
 
 # ---------------------------------------------------------------- kept on the node, read by the household, written on a button
