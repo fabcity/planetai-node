@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+- **28 Nov: distances and bearings a node keeps are measured from the middle of its cell.** Fires, the nearest school,
+  clinic, market and place of worship, the nearest river, the forecast's village and the sea, the island's stations,
+  fab labs and the ring's nearest station are measured from the middle of the node's res-8 cell and kept rounded:
+  whole km, whole degrees for bearings, and the nearest 100 m for `nearest_*_m` and `river_m`. The sea's two sensors
+  are named without a distance, and the earth-engine timelapse is centred on the middle and names each frame by its
+  cell. `/nearby` gives a reader without a token only the stations every point of the cell would keep, in whole km,
+  and refuses `?audit=1`; `/observations` cuts such a reader's `meta` as `/sensors` does; `/alerts` gives it no
+  text. On update, after the backup the update takes, the first poll removes the past rows of `nearest_school_m`,
+  `nearest_health_m`, `nearest_market_m`, `nearest_worship_m`, `fires_nearest_km`, `fires_nearest_bearing`,
+  `fires_upwind_km`, `fires_upwind_bearing`, `fires_local_24h`, `fires_region_24h`, `fires_local_upwind`,
+  `fires_region_upwind`, `frp_local_mw`, `frp_region_mw` and `river_m`, and the `substation_km` and
+  `large_plant_km` rows that are not whole km, from the readings and the hourly means. `/export` leaves out the text
+  of an alert raised before then. Schema 0.68.
+
 - **28 Nov: `/sensors` gives no position finer than the node's cell.** A model's sample and the map's summary are
   taken at the node's own point, and a reader without a token got that point to three decimals, about 80 m. Every row
   of a model or of the map now stands at the centre of its own cell, so one taken at the node's point stands where

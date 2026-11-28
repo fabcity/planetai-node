@@ -48,7 +48,7 @@ field). Low-confidence detections are dropped.
 |---|---|
 | `fires_local_24h`, `fires_region_24h` | burning places in the local ring (`FIRE_LOCAL_KM`, 25) and the regional ring (`FIRE_REGION_KM`, 150) |
 | `frp_local_mw`, `frp_region_mw` | their fire radiative power, summed, in MW |
-| `fires_nearest_km`, `fires_nearest_bearing` | the nearest, and its compass bearing from the house; absent when there is none |
+| `fires_nearest_km`, `fires_nearest_bearing` | the nearest, in whole km, and its compass bearing, both from the middle of the node's res-8 cell; absent when there is none |
 | `fires_local_upwind`, `fires_region_upwind` | the ones lying within 45° of where the wind comes from |
 | `fires_upwind_km`, `fires_upwind_bearing` | the nearest of those |
 | `fire_wind_from_deg` | the wind the upwind counts were reckoned with |

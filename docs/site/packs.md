@@ -268,7 +268,9 @@ What a rule may read:
 | `readings`, `sensors`, `channel_roles` | the raw tables |
 
 The node's own position and time zone are Postgres settings: `current_setting('planetai.lat')`,
-`current_setting('planetai.lon')`, `current_setting('TimeZone')`. `NODE_TZ` is the session time zone, so
+`current_setting('planetai.lon')`, `current_setting('TimeZone')`. The middle of the node's res-8 cell is
+`current_setting('planetai.clat')` and `current_setting('planetai.clon')`: a distance a rule says out loud is measured
+from there. `NODE_TZ` is the session time zone, so
 `date_trunc('day', ts)` means the household's day.
 
 A contributor has no level, no cooldown and no message:

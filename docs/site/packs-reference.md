@@ -348,7 +348,8 @@ when it is everywhere, and in the report when there is no ring worth the name.
 | Attribution | Bali Air Dispatch, baliairdispatch.com, and the network named in each row's `source` |
 
 The ring is every sensor with `sensors.source='baliairdispatch'` that is not local, is outdoor and has
-reported in the last 120 minutes.
+reported in the last 120 minutes. Its distances are measured from the middle of the node's res-8 cell, which the
+rules read as `planetai.clat` and `planetai.clon`, and the nearest station a message names is whole km away.
 
 ### Rules
 
@@ -617,7 +618,8 @@ calmer sea such as Barcelona's would set the thresholds lower.
 The adapter writes one sensor, `marine-point`, with `source='open-meteo-marine'`, `kind='model'`,
 `scale='bioregion'`, `local=False` and cadence `PT1H`. The API snaps to the nearest ocean cell however far it is,
 so the adapter measures the distance and raises if it is over `COAST_MAX_KM`; a node in Ubud does not get the
-weather of a sea it cannot see.
+weather of a sea it cannot see. The sensor is named `Sea, nearest cell (lat, lon)` after the cell's public point, and
+its `distance_km` is whole km from the middle of the node's res-8 cell.
 
 ### Rules
 
@@ -834,7 +836,8 @@ river's flow. The level-4 basin is the one index.fab.city draws as the place's b
 | Attribution | "Rivers and basins: HydroSHEDS (Lehner & Grill 2013), as published in HydroATLAS v1.0 (Linke et al. 2019) under CC-BY 4.0" |
 
 The adapter writes `hydro-point` (`kind='model'`, `scale='city'`, `local=False`), every row stamped with the fetch's
-own time. The Place map draws the rivers, wider with each Strahler order, and the level-12 basins as rows of its
+own time. `river_m` and the river figures beside it are the reach nearest the middle of the node's res-8 cell, its
+distance to the nearest 100 m, and the sentences in the sensor's `meta` say whole km. The Place map draws the rivers, wider with each Strahler order, and the level-12 basins as rows of its
 water layer (`GET /hydro`, token-only). Tapping a river gives its flow, the ground it drains and its distance to
 the sea. Tools › Pull on Place gets the rivers and basins that touch the area you chose, only inside the pack's own
 square.
@@ -953,7 +956,7 @@ configured the pack logs one line and idles. To set it up:
 ### Scripts
 
 - `planetai run earth-engine verify`: library, settings, key file, credentials, a real query, the datasets. Names the step that failed.
-- `planetai run earth-engine timelapse [--years a,b,c | --n 4 --gap 5] [--km 2] [--px 1024] [--source landsat|sentinel] [--lat --lon] [--dry-run]`: annual-median frames of clear pixels; Landsat by default (the only archive reaching 2010 with one instrument family), Sentinel-2 from 2016 at 10 m. PNGs and a side-by-side page land in `out/`.
+- `planetai run earth-engine timelapse [--years a,b,c | --n 4 --gap 5] [--km 2] [--px 1024] [--source landsat|sentinel] [--lat --lon] [--dry-run]`: annual-median frames of clear pixels; Landsat by default (the only archive reaching 2010 with one instrument family), Sentinel-2 from 2016 at 10 m. PNGs and a side-by-side page land in `out/`. The square is centred on the middle of the res-8 cell of the node (or of `--lat --lon`), and each frame is named `<node>-<cell>-<year>-<source>-<km>km.png`; `/earth/frame.png` serves only the frames named by the node's own cell, so a frame made before this naming stays in `out/` and is never served.
 - `planetai run earth-engine basemap [--months 12] [--dry-run]`: the median of every clear Sentinel-2 pass over the last twelve months, built in the node's own Earth Engine project and kept as tiles at zoom 8 to 15 in `out/ground/imagery.mbtiles`, served at `GET /ground/imagery`. The squares are centred on the middle of the house's res-8 cell, and a set fetched before 18 November 2026, which was cut round the house, is centred again by fetching it again. Earth Engine learns the two squares once, and the script says so before it runs.
 
 ### Settings
@@ -994,6 +997,9 @@ The adapter writes `place-point` (`kind='map'`, `scale='community'`) and creates
 everything within `PLACE_RADIUS_M` from Overpass, later polls recompute from what is stored, and every
 `PLACE_REFRESH_DAYS` it fetches again. It also notices a moved node (more than 1% of the radius, never less
 than 25 m) and refetches, clearing the satellite footprints and yearly series of the old circle.
+
+The four `nearest_*_m` are measured from the middle of the node's res-8 cell and kept to the nearest 100 m. The
+counts and shares cover the circle round the node's point.
 
 ### Rules
 
@@ -1125,7 +1131,9 @@ with the reason; `make: <n> fab lab(s) within 50 km · fablabs.io @ <snapshot> �
 
 It stores one `sensors` row per active lab inside `MAKE_RADIUS_KM`, a `facility` with no readings; the row and
 its `meta` are on [Data schema](schema.md). `meta` never holds an email or a telephone number, although most
-upstream records carry them. A facility reaches no metric, cell or alert, and is never in custody.
+upstream records carry them. A facility reaches no metric, cell or alert, and is never in custody. Which labs are
+inside `MAKE_RADIUS_KM` is judged from the node's point, and each lab's `distance_km` is whole km from the middle of
+the node's res-8 cell; a lab in or beside the cell reads `<1 km`.
 
 Near the end of the report, after what happened and before the to-do lines, it adds one sentence:
 
@@ -1196,6 +1204,10 @@ from, by the node's own wind: a local kit, then the core Open-Meteo point, then 
 `ts <= now()`. Its `sections:` entry, `fire` (stage observe, `wall: true`), shows fires nearby, in the region
 and upwind, and the nearest fire's distance and bearing; it stays out of `/issues` until the node holds a row
 of it. The source line under the band says how far each ring reaches, from `FIRE_LOCAL_KM` and `FIRE_REGION_KM`.
+
+Every distance, bearing and count is taken from the middle of the node's res-8 cell, so it is the same wherever in
+the cell the node stands. `fires_nearest_km` and `fires_upwind_km` are kept in whole km, the bearings in whole
+degrees, and the rules say the same numbers.
 
 ### Rules
 

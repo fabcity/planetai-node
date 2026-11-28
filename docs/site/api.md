@@ -189,7 +189,7 @@ Rolling statistics per sensor and metric over 24 hours, for sensors only: `last`
 ### GET /observations
 Access: open
 
-The latest value of each slow source and metric, up to now (a forecast hour still ahead is not one), such as a city statistic, a model point or a survey: `sensor_id`, `metric`, `value`, `ts`, `name`, `kind`, `scale`, `local`, `cadence`, `meta`.
+The latest value of each slow source and metric, up to now (a forecast hour still ahead is not one), such as a city statistic, a model point or a survey: `sensor_id`, `metric`, `value`, `ts`, `name`, `kind`, `scale`, `local`, `cadence`, `meta`. A reader without a token gets `meta` cut as `/sensors` cuts it. The distances a pack keeps here are measured from the middle of the node's res-8 cell: whole km for fires, stations, labs and the sea, the nearest 100 m for `nearest_*_m` and `river_m`.
 
 ### GET /trust
 Access: open
@@ -282,7 +282,7 @@ The node asks and a person answers. Every client uses the same two routes, `GET 
 ### GET /alerts
 Access: open
 
-Alerts newest first, with the id `planetai act <id>` needs: `[{id, ts, rule_id, sensor_id, level, text, buttons, acted_at}]`. `buttons` is null, or the rows of buttons the rule asked with (`{text, value, stage, ask}` each, `text` and `ask` by locale). `?limit=` 0 to 1000 (default 50) and `?since_hours=` up to 2160 (0 is no bound). `acted_at` is the time of the first `acknowledged` or `acted` answer.
+Alerts newest first, with the id `planetai act <id>` needs: `[{id, ts, rule_id, sensor_id, level, text, buttons, acted_at}]`. `buttons` is null, or the rows of buttons the rule asked with (`{text, value, stage, ask}` each, `text` and `ask` by locale). `?limit=` 0 to 1000 (default 50) and `?since_hours=` up to 2160 (0 is no bound). `acted_at` is the time of the first `acknowledged` or `acted` answer. A reader without a token gets every alert with `text` and `buttons` null.
 
 ### GET /actions
 Access: token
@@ -353,7 +353,7 @@ What surrounds the node's own numbers: other people's stations, the forecast, th
 ### GET /nearby
 Access: open
 
-The ring of other people's stations around this node, from what is stored, so the page never waits on someone else's server. The stations come from every enabled pack that declares `stations:` (here `bali-air-dispatch`, within `BAD_RADIUS_KM`) and reported in the last 24 hours. Returns `{ring, stations, lowest, p25, median, p75, highest, nearest_km, mine, mine_sensors, radius_km, attribution, mine_minus_ring}`, each `ring` row with its `km`, `pm25` and `reporting`. `?audit=1` also asks each pack's archive for a verdict per station.
+The ring of other people's stations around this node, from what is stored, so the page never waits on someone else's server. The stations come from every enabled pack that declares `stations:` (here `bali-air-dispatch`, within `BAD_RADIUS_KM`) and reported in the last 24 hours. Returns `{ring, stations, lowest, p25, median, p75, highest, nearest_km, mine, mine_sensors, radius_km, attribution, mine_minus_ring}`, each `ring` row with its `km`, `pm25` and `reporting`. Every `km` is whole km from the middle of the node's res-8 cell. `?audit=1` also asks each pack's archive for a verdict per station. A reader without a token gets only the stations every point of the node's cell would keep, each at three decimals, with the ring's figures worked out from those, and `?audit=1` answers it 403.
 
 ### GET /calibrate
 Access: token
@@ -805,7 +805,7 @@ push is pinned to the key it signs with. 404 when no child of that name is pinne
 ### GET /export
 Access: public
 
-One day of this node as open data under CC BY 4.0, for `?day=YYYY-MM-DD`: hourly means, the Index cells, the first line of each alert, ρ and, with the things pack on, the offers. Never raw readings, `private` channels, secrets or readings of a source whose licence is non-commercial, and the node's own sensors are named by role (`indoor-1`), a child's as a home nearby (`home-1/outdoor-1`). `backup.sh` writes it every night to `exports/<node>/YYYY-MM-DD.json`.
+One day of this node as open data under CC BY 4.0, for `?day=YYYY-MM-DD`: hourly means, the Index cells, the first line of each alert (null for an alert raised before the node measured its distances from the middle of its cell, the time in `data_cuts`), ρ and, with the things pack on, the offers. Never raw readings, `private` channels, secrets or readings of a source whose licence is non-commercial, and the node's own sensors are named by role (`indoor-1`), a child's as a home nearby (`home-1/outdoor-1`). `backup.sh` writes it every night to `exports/<node>/YYYY-MM-DD.json`.
 
 ```json
 {"schema": "export-v0", "node": "bayu-ungasan", "lat": -8.825, "lon": 115.159, "day": "2026-10-19",
