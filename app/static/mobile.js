@@ -39,7 +39,7 @@ async function boot() {
     const q = new URLSearchParams(location.search);
     if (q.get('layout') === 'mobile') localStorage.setItem('planetai_layout', 'mobile');
   } catch (e) { /* no storage here */ }
-  const foot = $('#fulldoors'); if (foot) foot.href = '/?layout=doors' + (location.hash || '');
+  const foot = $('#fulldoors'); if (foot) foot.href = location.pathname + '?layout=doors' + (location.hash || '');
   try {
     D = await loadD(MOBILE_ROUTES);
     leadKey = D.lead;

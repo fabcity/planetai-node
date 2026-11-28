@@ -887,7 +887,7 @@ if ".scr{--ink" in _v2:   # the doors' .scr screens carry the same screen values
     _i = _v2.index(".scr{--ink"); _v2 = _v2[:_i] + _v2[_v2.index("}", _i) + 1:]
 assert not re.search(r"#[0-9A-Fa-f]{3,6}\b", _v2), "no raw colour outside the screen: the frozen layer's names"
 assert re.search(r"@media \(max-width:760px\)\{[^@]*\.bench\{grid-template-columns:minmax\(0,1fr\)", html), "a phone: one column, the screen first"
-assert ".phour button{width:var(--k);height:var(--k)" in _css and ".pbase button{min-height:var(--k);padding:0 12px" in _css and "min-height:var(--k);padding:0 12px;border:0;border-radius:999px;background:none;color:var(--mute);cursor:pointer;font:400 11px" in _css \
+assert ".phour button{width:var(--k);height:var(--k)" in _css and ".pbase button{min-height:var(--k);padding:0 12px" in _css and "min-height:var(--k);padding:0 12px;border:0;border-radius:999px;background:none;color:var(--mute);cursor:pointer;font:400 12px" in _css \
     and "#altbar button{background:none;border:1px solid var(--hair);border-radius:999px;color:var(--ink);width:44px;height:44px" in _css, \
     "the hour, the base switch and the rungs follow --k; the satellite's years, on the page, keep 44 px"
 assert re.search(r"@media \(max-width:760px\)\{[^@]*#cake\{display:none;position:fixed;left:0;right:0;bottom:0", html), "a phone's cake is a sheet over the lower band"

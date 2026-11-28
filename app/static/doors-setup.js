@@ -105,7 +105,17 @@ async function setupLoad() {
 
 function setupDraw() {
   const d = SETUP.desc, el = $('#setupv2');
-  if (!d) { el.innerHTML = `<p class="fine">GET /settings did not answer this screen.</p>`; return; }
+  /* a screen the node does not answer (a public link, or sharing off): say what the page is for and where to go,
+     instead of one bare line on an empty page */
+  if (!d) {
+    el.innerHTML = `<header class="sh"><div class="k">Set up · ${esc(typeof D !== 'undefined' && D && D.node ? D.node.name : 'this node')}</div><h1>This page belongs to whoever keeps this node.</h1>`
+      + `<p class="lede">Set up holds the node's settings, its packs and who may read it. This screen cannot read them: GET /settings did not answer it. `
+      + `The keeper opens it on the node's own network, with the node's token.</p></header>`
+      + `<div class="lrow"><span class="t">What the node reads around it, now and over the week.</span><a class="c" href="#now">Now →</a></div>`
+      + `<div class="lrow"><span class="t">The place on paper, to print or keep.</span><a class="c" href="#place/report">The Place report →</a></div>`
+      + `<div class="lrow"><span class="t">How the node works, page by page.</span><a class="c" href="https://planetai.fab.city/docs/" target="_blank" rel="noopener">Documentation →</a></div>`;
+    return;
+  }
   const unlocked = !!d.unlocked, rows = d.runtime || [], g = SETUP.group;
   const setHere = k => rows.filter(r => r.group === k && r.source === 'gui').length;
   el.innerHTML = `<header class="sh" data-learn="settings" data-reads="/settings" data-pack="core"><div class="k">Set up · ${esc(D.node.name)}</div><h1>How this node was told to behave.</h1>`
